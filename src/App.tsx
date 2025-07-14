@@ -12,6 +12,9 @@ import { Sleep } from "@/pages/Sleep";
 import { Tournaments } from "@/pages/Tournaments";
 import { Analytics } from "@/pages/Analytics";
 import { Progress } from "@/pages/Progress";
+import { LogSessionForm } from "@/components/forms/LogSessionForm";
+import { LogSleepForm } from "@/components/forms/LogSleepForm";
+import { SetGoalForm } from "@/components/forms/SetGoalForm";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,6 +44,9 @@ const ProtectedRoutes = () => {
         <Route path="tournaments" element={<Tournaments />} />
         <Route path="analytics" element={<Analytics />} />
         <Route path="progress" element={<Progress />} />
+        <Route path="log-session" element={<LogSessionForm />} />
+        <Route path="log-sleep" element={<LogSleepForm />} />
+        <Route path="set-goal" element={<SetGoalForm />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

@@ -3,9 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Trophy, Moon, Target, Activity, TrendingUp } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export const Dashboard = () => {
   const { profile } = useAuth();
+  const navigate = useNavigate();
 
   if (!profile) return null;
 
@@ -85,22 +87,37 @@ export const Dashboard = () => {
       <div className="space-y-4">
         <h2 className="text-lg font-semibold">Quick Actions</h2>
         <div className="grid grid-cols-2 gap-4">
-          <Button className="gradient-primary text-primary-foreground font-semibold h-12">
+          <Button 
+            className="gradient-primary text-primary-foreground font-semibold h-12"
+            onClick={() => navigate('/log-session')}
+          >
             <Calendar className="h-5 w-5 mr-2" />
             Log Session
           </Button>
           
-          <Button variant="outline" className="h-12">
+          <Button 
+            variant="outline" 
+            className="h-12"
+            onClick={() => navigate('/log-sleep')}
+          >
             <Moon className="h-5 w-5 mr-2" />
             Log Sleep
           </Button>
           
-          <Button variant="outline" className="h-12">
+          <Button 
+            variant="outline" 
+            className="h-12"
+            onClick={() => navigate('/tournaments')}
+          >
             <Trophy className="h-5 w-5 mr-2" />
             View Tournaments
           </Button>
           
-          <Button variant="outline" className="h-12">
+          <Button 
+            variant="outline" 
+            className="h-12"
+            onClick={() => navigate('/set-goal')}
+          >
             <Target className="h-5 w-5 mr-2" />
             Set Goals
           </Button>
