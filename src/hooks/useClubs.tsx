@@ -19,7 +19,7 @@ export const useClubs = () => {
         //   .select('id, name, description')
         //   .order('name');
         
-  let { data, error } = await supabase
+  let { data: clubs, error } = await supabase
   .from('clubs')
   .select('*')
           
