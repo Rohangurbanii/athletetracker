@@ -14,21 +14,100 @@ export type Database = {
   }
   public: {
     Tables: {
+      attendance: {
+        Row: {
+          athlete_id: string
+          club_id: string
+          created_at: string
+          id: string
+          practice_session_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          athlete_id: string
+          club_id: string
+          created_at?: string
+          id?: string
+          practice_session_id: string
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          athlete_id?: string
+          club_id?: string
+          created_at?: string
+          id?: string
+          practice_session_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_practice_session_id_fkey"
+            columns: ["practice_session_id"]
+            isOneToOne: false
+            referencedRelation: "practice_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clubs: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       coach_athletes: {
         Row: {
           athlete_id: string
+          club_id: string | null
           coach_id: string
           created_at: string
           id: string
         }
         Insert: {
           athlete_id: string
+          club_id?: string | null
           coach_id: string
           created_at?: string
           id?: string
         }
         Update: {
           athlete_id?: string
+          club_id?: string | null
           coach_id?: string
           created_at?: string
           id?: string
@@ -39,6 +118,13 @@ export type Database = {
             columns: ["athlete_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coach_athletes_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
           {
@@ -53,6 +139,7 @@ export type Database = {
       goals: {
         Row: {
           athlete_id: string
+          club_id: string | null
           coach_id: string
           created_at: string
           description: string | null
@@ -64,6 +151,7 @@ export type Database = {
         }
         Insert: {
           athlete_id: string
+          club_id?: string | null
           coach_id: string
           created_at?: string
           description?: string | null
@@ -75,6 +163,7 @@ export type Database = {
         }
         Update: {
           athlete_id?: string
+          club_id?: string | null
           coach_id?: string
           created_at?: string
           description?: string | null
@@ -93,6 +182,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "goals_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "goals_coach_id_fkey"
             columns: ["coach_id"]
             isOneToOne: false
@@ -106,6 +202,7 @@ export type Database = {
           athlete_id: string
           athlete_notes: string | null
           athlete_rpe: number | null
+          club_id: string | null
           coach_id: string
           coach_notes: string | null
           coach_rpe: number | null
@@ -120,6 +217,7 @@ export type Database = {
           athlete_id: string
           athlete_notes?: string | null
           athlete_rpe?: number | null
+          club_id?: string | null
           coach_id: string
           coach_notes?: string | null
           coach_rpe?: number | null
@@ -134,6 +232,7 @@ export type Database = {
           athlete_id?: string
           athlete_notes?: string | null
           athlete_rpe?: number | null
+          club_id?: string | null
           coach_id?: string
           coach_notes?: string | null
           coach_rpe?: number | null
@@ -153,6 +252,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "practice_sessions_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "practice_sessions_coach_id_fkey"
             columns: ["coach_id"]
             isOneToOne: false
@@ -163,6 +269,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          club_id: string | null
           created_at: string
           email: string
           full_name: string | null
@@ -172,6 +279,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          club_id?: string | null
           created_at?: string
           email: string
           full_name?: string | null
@@ -181,6 +289,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          club_id?: string | null
           created_at?: string
           email?: string
           full_name?: string | null
@@ -189,12 +298,21 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sleep_logs: {
         Row: {
           athlete_id: string
           bedtime: string
+          club_id: string | null
           created_at: string
           date: string
           id: string
@@ -205,6 +323,7 @@ export type Database = {
         Insert: {
           athlete_id: string
           bedtime: string
+          club_id?: string | null
           created_at?: string
           date: string
           id?: string
@@ -215,6 +334,7 @@ export type Database = {
         Update: {
           athlete_id?: string
           bedtime?: string
+          club_id?: string | null
           created_at?: string
           date?: string
           id?: string
@@ -230,12 +350,20 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "sleep_logs_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
         ]
       }
       tournament_results: {
         Row: {
           athlete_id: string
           athlete_notes: string | null
+          club_id: string | null
           coach_notes: string | null
           created_at: string
           id: string
@@ -247,6 +375,7 @@ export type Database = {
         Insert: {
           athlete_id: string
           athlete_notes?: string | null
+          club_id?: string | null
           coach_notes?: string | null
           created_at?: string
           id?: string
@@ -258,6 +387,7 @@ export type Database = {
         Update: {
           athlete_id?: string
           athlete_notes?: string | null
+          club_id?: string | null
           coach_notes?: string | null
           created_at?: string
           id?: string
@@ -275,6 +405,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "tournament_results_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "tournament_results_tournament_id_fkey"
             columns: ["tournament_id"]
             isOneToOne: false
@@ -285,6 +422,7 @@ export type Database = {
       }
       tournaments: {
         Row: {
+          club_id: string | null
           created_at: string
           description: string | null
           end_date: string
@@ -294,6 +432,7 @@ export type Database = {
           start_date: string
         }
         Insert: {
+          club_id?: string | null
           created_at?: string
           description?: string | null
           end_date: string
@@ -303,6 +442,7 @@ export type Database = {
           start_date: string
         }
         Update: {
+          club_id?: string | null
           created_at?: string
           description?: string | null
           end_date?: string
@@ -311,7 +451,15 @@ export type Database = {
           name?: string
           start_date?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tournaments_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
