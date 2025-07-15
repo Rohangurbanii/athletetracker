@@ -19,7 +19,7 @@ export const useClubs = () => {
           .select('id, name, description')
           .order('name');
         console.log('ashwin')
-        console.log(data)
+        console.log(data,error)
         if (error) throw error;
         setClubs(data || []);
       } catch (error) {
