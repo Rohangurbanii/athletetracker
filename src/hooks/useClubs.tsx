@@ -14,10 +14,15 @@ export const useClubs = () => {
   useEffect(() => {
     const fetchClubs = async () => {
       try {
-        const { data, error } = await supabase
-          .from('clubs')
-          .select('id, name, description')
-          .order('name');
+        // const { data, error } = await supabase
+        //   .from('clubs')
+        //   .select('id, name, description')
+        //   .order('name');
+        
+  let { data,error } = await supabase
+  .from('clubs')
+  .select('*')
+          
         console.log('ashwin')
         console.log(data,error)
         if (error) throw error;
