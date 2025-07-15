@@ -68,6 +68,7 @@ export type Database = {
       }
       clubs: {
         Row: {
+          admin_id: string | null
           created_at: string
           description: string | null
           id: string
@@ -75,6 +76,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          admin_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -82,13 +84,22 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          admin_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
           name?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "clubs_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       coach_athletes: {
         Row: {

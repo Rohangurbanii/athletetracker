@@ -8,7 +8,8 @@ interface Profile {
   user_id: string;
   email: string;
   full_name: string | null;
-  role: 'coach' | 'athlete';
+  role: 'admin' | 'coach' | 'athlete';
+  club_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -17,7 +18,8 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string, role: 'coach' | 'athlete') => Promise<void>;
+  signUp: (email: string, password: string, fullName: string, role: 'coach' | 'athlete', clubId: string) => Promise<void>;
+  signUpAdmin: (email: string, password: string, fullName: string, clubName: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -82,15 +84,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const signUp = async (email: string, password: string, fullName: string, role: 'coach' | 'athlete') => {
+  const signUp = async (email: string, password: string, fullName: string, role: 'coach' | 'athlete', clubId: string) => {
     try {
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
+          emailRedirectTo: `${window.location.origin}/`,
           data: {
             full_name: fullName,
             role: role,
+            club_id: clubId,
           },
         },
       });
@@ -100,6 +104,63 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       toast({
         title: "Account created!",
         description: "Please check your email to verify your account.",
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      });
+      throw error;
+    }
+  };
+
+  const signUpAdmin = async (email: string, password: string, fullName: string, clubName: string) => {
+    try {
+      // First create the user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+          data: {
+            full_name: fullName,
+            role: 'admin',
+          },
+        },
+      });
+
+      if (authError) throw authError;
+
+      if (authData.user) {
+        // Create profile first
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            user_id: authData.user.id,
+            email,
+            full_name: fullName,
+            role: 'admin'
+          })
+          .select()
+          .single();
+
+        if (profileError) throw profileError;
+
+        // Then create the club with admin_id
+        const { error: clubError } = await supabase
+          .from('clubs')
+          .insert({
+            name: clubName,
+            admin_id: profileData.id
+          });
+
+        if (clubError) throw clubError;
+      }
+
+      toast({
+        title: "Admin account created!",
+        description: "Please check your email to verify your account. Your club has been created.",
       });
     } catch (error: any) {
       toast({
@@ -157,6 +218,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     profile,
     loading,
     signUp,
+    signUpAdmin,
     signIn,
     signOut,
   };
