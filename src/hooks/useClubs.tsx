@@ -16,7 +16,7 @@ export const useClubs = () => {
       try {
         const { data, error } = await supabase
           .from('clubs')
-          .select('id, name, description')
+          .select('id', 'name', 'description')
           .order('name');
         console.log('ashwin')
         console.log(data,error)
