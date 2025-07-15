@@ -18,6 +18,7 @@ export const useClubs = () => {
           .from('clubs')
           .select('id, name, description')
           .order('name');
+        console.log('ashwin')
         console.log(data)
         if (error) throw error;
         setClubs(data || []);
