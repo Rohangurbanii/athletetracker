@@ -185,6 +185,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         description: "You have successfully signed in.",
       });
     } catch (error: any) {
+      console.log("error while signing in");
       toast({
         variant: "destructive",
         title: "Error",
