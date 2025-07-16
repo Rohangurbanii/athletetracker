@@ -43,16 +43,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     // Get initial session
     console.log("getting initial session");
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        console.log("session present, now fetching profile");
-        fetchProfile(session.user.id);
-      } else {
-        console.log("session is absent");
-        setLoading(false);
-      }
-    });
+    initializeAuth();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -69,7 +60,37 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     return () => subscription.unsubscribe();
   }, []);
-
+  
+  const initializeAuth = async () => {
+    try {
+      console.log("getting initial session");
+      
+      // Set a reasonable timeout
+      const sessionPromise = supabase.auth.getSession();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout')), 8000)
+      );
+      
+      const { data: { session } } = await Promise.race([
+        sessionPromise,
+        timeoutPromise
+      ]);
+      
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        console.log("session present, now fetching profile");
+        await fetchProfile(session.user.id);
+      } else {
+        console.log("session is absent");
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error('Auth initialization failed:', error);
+      setUser(null);
+      setProfile(null);
+      setLoading(false);
+    }
+  };
   const fetchProfile = async (userId: string) => {
     try {
       const { data, error } = await supabase
