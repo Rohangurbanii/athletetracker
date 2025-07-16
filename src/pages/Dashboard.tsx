@@ -26,7 +26,7 @@ export const Dashboard = () => {
     
     setSessionsLoading(true);
     try {
-      const today = format(new Date(), 'yyyy-MM-dd');
+      string today = format(new Date(), 'yyyy-MM-dd');
       console.log(today);
       const { data, error } = await supabase
         .from('practice_sessions')
