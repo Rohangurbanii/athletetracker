@@ -21,12 +21,13 @@ export const Dashboard = () => {
   }, [profile]);
 
   const fetchTodaySessions = async () => {
+    console.log("fetching today's sessions")
     if (!profile) return;
     
     setSessionsLoading(true);
     try {
       const today = format(new Date(), 'yyyy-MM-dd');
-      
+      console.log(today);
       const { data, error } = await supabase
         .from('practice_sessions')
         .select('*')
@@ -35,6 +36,7 @@ export const Dashboard = () => {
         .order('created_at', { ascending: true });
 
       if (error) throw error;
+      console.log("practice session data", data);
       setTodaySessions(data || []);
     } catch (error) {
       console.error('Error fetching today\'s sessions:', error);
