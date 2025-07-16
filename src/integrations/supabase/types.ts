@@ -441,6 +441,7 @@ export type Database = {
           location: string | null
           name: string
           start_date: string
+          status: string | null
         }
         Insert: {
           club_id?: string | null
@@ -451,6 +452,7 @@ export type Database = {
           location?: string | null
           name: string
           start_date: string
+          status?: string | null
         }
         Update: {
           club_id?: string | null
@@ -461,6 +463,7 @@ export type Database = {
           location?: string | null
           name?: string
           start_date?: string
+          status?: string | null
         }
         Relationships: [
           {
