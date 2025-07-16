@@ -46,8 +46,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
+        console.log("session present, now fetching profile");
+        
         fetchProfile(session.user.id);
       } else {
+        console.log("session is absent");
         setLoading(false);
       }
     });
