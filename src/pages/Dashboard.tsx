@@ -6,19 +6,8 @@ import { Calendar, Trophy, Moon, Target, Activity, TrendingUp } from 'lucide-rea
 import { useNavigate } from 'react-router-dom';
 
 export const Dashboard = () => {
-  const { profile, loading } = useAuth();
+  const { profile } = useAuth();
   const navigate = useNavigate();
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
 
   if (!profile) return null;
 
