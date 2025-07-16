@@ -4,46 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Trophy, Moon, Target, Activity, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { useEffect, useState } from 'react';
-import { format } from 'date-fns';
 
 export const Dashboard = () => {
   const { profile, loading, user } = useAuth();
   const navigate = useNavigate();
-  const [todaySessions, setTodaySessions] = useState([]);
-  const [sessionsLoading, setSessionsLoading] = useState(false);
-
-  useEffect(() => {
-    if (profile) {
-      fetchTodaySessions();
-    }
-  }, [profile]);
-
-  const fetchTodaySessions = async () => {
-    console.log("fetching today's sessions for id: ", profile.id);
-    if (!profile) return;
-    
-    setSessionsLoading(true);
-    try {
-      const today = format(new Date(), 'yyyy-MM-dd');
-      console.log(today);
-      const { data, error } = await supabase
-        .from('practice_sessions')
-        .select('*')
-        .eq('date', today)
-        .eq('athlete_id', profile.id)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-      console.log("practice session data", data);
-      setTodaySessions(data || []);
-    } catch (error) {
-      console.error('Error fetching today\'s sessions:', error);
-    } finally {
-      setSessionsLoading(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -120,7 +84,7 @@ export const Dashboard = () => {
         </Card>
       </div>
 
-       {/* Today's Schedule */}
+      {/* Today's Schedule */}
       <Card className="sport-card">
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
@@ -129,27 +93,21 @@ export const Dashboard = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {sessionsLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin w-6 h-6 border-4 border-primary border-t-transparent rounded-full"></div>
+          <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg border border-border/50">
+            <div>
+              <p className="font-medium">Morning Training</p>
+              <p className="text-sm text-muted-foreground">8:00 AM - 10:00 AM</p>
             </div>
-          ) : todaySessions.length > 0 ? (
-            todaySessions.map((session) => (
-              <div key={session.id} className="flex items-center justify-between p-3 bg-card/50 rounded-lg border border-border/50">
-                <div>
-                  <p className="font-medium">{session.title}</p>
-                  {session.description && (
-                    <p className="text-sm text-muted-foreground">{session.description}</p>
-                  )}
-                </div>
-                <Badge variant="outline">Scheduled</Badge>
-              </div>
-            ))
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <p>No sessions scheduled for today</p>
+            <Badge variant="outline">Upcoming</Badge>
+          </div>
+          
+          <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg border border-border/50">
+            <div>
+              <p className="font-medium">Recovery Session</p>
+              <p className="text-sm text-muted-foreground">2:00 PM - 3:00 PM</p>
             </div>
-          )}
+            <Badge className="bg-accent">Active</Badge>
+          </div>
         </CardContent>
       </Card>
 
