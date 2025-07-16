@@ -13,27 +13,45 @@ export const Practice = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchSessions = async () => {
       if (!profile?.club_id) return;
       
       setLoading(true);
+      setError(null);
+      
       try {
-        const { data, error } = await supabase
+        // Create a timeout promise
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Request timeout')), 10000)
+        );
+
+        // Create the actual query promise
+        const queryPromise = supabase
           .from('practice_sessions')
           .select('*')
           .eq('club_id', profile.club_id)
           .eq('date', selectedDate)
           .order('created_at', { ascending: false });
 
+        // Race between timeout and query
+        const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any;
+
         if (error) {
           console.error('Error fetching sessions:', error);
+          setError('Failed to load practice sessions');
         } else {
           setSessions(data || []);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error:', error);
+        if (error.message === 'Request timeout') {
+          setError('Request timed out. Please try again.');
+        } else {
+          setError('Failed to load practice sessions');
+        }
       } finally {
         setLoading(false);
       }
@@ -81,6 +99,18 @@ export const Practice = () => {
           <Card className="sport-card">
             <CardContent className="text-center py-12">
               <p className="text-muted-foreground">Loading sessions...</p>
+            </CardContent>
+          </Card>
+        ) : error ? (
+          <Card className="sport-card">
+            <CardContent className="text-center py-12">
+              <p className="text-destructive mb-4">{error}</p>
+              <Button 
+                variant="outline" 
+                onClick={() => window.location.reload()}
+              >
+                Try Again
+              </Button>
             </CardContent>
           </Card>
         ) : sessions.map((session) => (
@@ -160,13 +190,13 @@ export const Practice = () => {
       </div>
 
       {/* Empty State */}
-      {!loading && sessions.length === 0 && (
+      {!loading && !error && sessions.length === 0 && (
         <Card className="sport-card">
           <CardContent className="text-center py-12">
             <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No sessions scheduled</h3>
+            <h3 className="text-lg font-semibold mb-2">No practice sessions logged</h3>
             <p className="text-muted-foreground mb-4">
-              {isCoach ? 'Schedule your first training session' : 'No training sessions for today'}
+              {isCoach ? 'No training sessions have been scheduled for this date' : 'No training sessions have been logged for this date'}
             </p>
             {isCoach && (
               <Button className="gradient-primary text-primary-foreground">
