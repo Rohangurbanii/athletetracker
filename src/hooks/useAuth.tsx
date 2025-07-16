@@ -68,18 +68,40 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const fetchProfile = async (userId: string) => {
+    console.log('Fetching profile for user:', userId);
+    
+    // Create timeout promise
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Profile fetch timeout')), 10000);
+    });
+
     try {
-      const { data, error } = await supabase
+      const fetchPromise = supabase
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
         .single();
 
-      if (error) throw error;
+      const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
+
+      if (error) {
+        console.error('Supabase error fetching profile:', error);
+        throw error;
+      }
+      
+      console.log('Profile fetched successfully:', data);
       setProfile(data as Profile);
     } catch (error) {
       console.error('Error fetching profile:', error);
+      // Set profile to null on error to allow UI to handle gracefully
+      setProfile(null);
+      toast({
+        variant: "destructive",
+        title: "Profile Error",
+        description: "Failed to load profile. Please try refreshing the page.",
+      });
     } finally {
+      console.log('Setting loading to false');
       setLoading(false);
     }
   };
