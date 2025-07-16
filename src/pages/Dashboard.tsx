@@ -21,7 +21,7 @@ export const Dashboard = () => {
   }, [profile]);
 
   const fetchTodaySessions = async () => {
-    console.log("fetching today's sessions")
+    console.log("fetching today's sessions for id: ", profile.id);
     if (!profile) return;
     
     setSessionsLoading(true);
