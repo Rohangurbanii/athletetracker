@@ -14,13 +14,14 @@ export const useClubs = () => {
   useEffect(() => {
     const fetchClubs = async () => {
       try {
-        const { data, error } = await supabase
+        const { data: clubs, error } = await supabase
           .from('clubs')
           .select('id, name, description')
           .order('name');
-
+        console.log('ashwin')
+        console.log(clubs,error)
         if (error) throw error;
-        setClubs(data || []);
+        setClubs(clubs || []);
       } catch (error) {
         console.error('Error fetching clubs:', error);
       } finally {

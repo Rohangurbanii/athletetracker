@@ -72,7 +72,7 @@ export const AuthScreen = () => {
       setIsLoading(false);
     }
   };
-
+  console.log(clubs)
   return (
     <div className="mobile-container flex items-center justify-center min-h-screen p-4">
       <div className="w-full max-w-md space-y-6">

@@ -6,38 +6,10 @@ import { Calendar, Trophy, Moon, Target, Activity, TrendingUp } from 'lucide-rea
 import { useNavigate } from 'react-router-dom';
 
 export const Dashboard = () => {
-  const { profile, loading, user } = useAuth();
+  const { profile } = useAuth();
   const navigate = useNavigate();
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
-      </div>
-    );
-  }
-
-  if (!profile && user) {
-    return (
-      <div className="space-y-6">
-        <Card className="sport-card">
-          <CardContent className="p-6 text-center">
-            <h2 className="text-lg font-semibold mb-2">Profile Not Found</h2>
-            <p className="text-muted-foreground mb-4">
-              We couldn't load your profile information. This might be a temporary issue.
-            </p>
-            <Button onClick={() => window.location.reload()}>
-              Refresh Page
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (!profile) {
-    return null;
-  }
+  if (!profile) return null;
 
   const isCoach = profile.role === 'coach';
 
