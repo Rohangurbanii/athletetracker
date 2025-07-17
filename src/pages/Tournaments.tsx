@@ -151,31 +151,19 @@ export const Tournaments = () => {
                         )}
                       </div>
                     </div>
-                    <Badge 
-                      className={
-                        tournament.status === 'registered' 
-                          ? 'bg-green-500/20 text-green-400' 
-                          : 'bg-blue-500/20 text-blue-400'
-                      }
-                    >
-                      {tournament.status || 'available'}
+                    <Badge className="bg-blue-500/20 text-blue-400">
+                      Available
                     </Badge>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {tournament.description && (
-                    <p className="text-sm text-muted-foreground mb-4">{tournament.description}</p>
+                  {tournament.location && (
+                    <p className="text-sm text-muted-foreground mb-4">Location: {tournament.location}</p>
                   )}
                   <div className="flex space-x-2">
-                    {tournament.status === 'available' ? (
-                      <Button className="gradient-primary text-primary-foreground">
-                        Register
-                      </Button>
-                    ) : (
-                      <Button variant="outline">
-                        View Details
-                      </Button>
-                    )}
+                    <Button className="gradient-primary text-primary-foreground">
+                      Register
+                    </Button>
                     <Button variant="outline">
                       <Calendar className="h-4 w-4 mr-2" />
                       Add to Calendar
@@ -240,36 +228,14 @@ export const Tournaments = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {/* Key Learnings */}
-                    {result.key_learnings && (
-                      <div className="stat-card">
-                        <p className="text-sm text-muted-foreground mb-2">Key Learnings</p>
-                        <p className="text-sm">{result.key_learnings}</p>
-                      </div>
-                    )}
-
-                    {/* Improvement Areas */}
-                    {result.improvement_areas && (
-                      <div className="stat-card">
-                        <p className="text-sm text-muted-foreground mb-2">Areas for Improvement</p>
-                        <p className="text-sm">{result.improvement_areas}</p>
-                      </div>
-                    )}
-
-                    {/* Notes */}
-                    {result.athlete_notes && (
-                      <div className="stat-card">
-                        <p className="text-sm text-muted-foreground mb-2">Athlete Notes</p>
-                        <p className="text-sm">{result.athlete_notes}</p>
-                      </div>
-                    )}
-
-                    {result.coach_notes && (
-                      <div className="stat-card">
-                        <p className="text-sm text-muted-foreground mb-2">Coach Notes</p>
-                        <p className="text-sm">{result.coach_notes}</p>
-                      </div>
-                    )}
+                    <div className="stat-card">
+                      <p className="text-sm text-muted-foreground mb-2">Rank</p>
+                      <p className="text-sm font-semibold">{result.rank || 'N/A'}</p>
+                    </div>
+                    <div className="stat-card">
+                      <p className="text-sm text-muted-foreground mb-2">Result</p>
+                      <p className="text-sm">{result.result || 'No result recorded'}</p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

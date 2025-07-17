@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 interface Club {
   id: string;
   name: string;
-  description: string | null;
+  created_at: string | null;
 }
 
 export const useClubs = () => {
@@ -16,7 +16,7 @@ export const useClubs = () => {
       try {
         const { data: clubs, error } = await supabase
           .from('clubs')
-          .select('id, name, description')
+          .select('id, name, created_at')
           .order('name');
         console.log('ashwin')
         console.log(clubs,error)
