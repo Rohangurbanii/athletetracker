@@ -14,6 +14,35 @@ export type Database = {
   }
   public: {
     Tables: {
+      athletes: {
+        Row: {
+          club_id: string | null
+          created_at: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          club_id?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          club_id?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athletes_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attendance: {
         Row: {
           athlete_id: string
