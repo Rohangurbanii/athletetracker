@@ -73,17 +73,8 @@ export const Progress = () => {
     fetchGoals();
   }, [profile]);
 
-  // Mock comments for now - in a real app this would come from a comments table
-  const mockComments = [
-    {
-      id: '1',
-      date: new Date().toISOString().split('T')[0],
-      type: 'practice',
-      source: 'Coach',
-      comment: 'Keep up the great work on your goals!',
-      session: 'Recent Training',
-    },
-  ];
+  // No mock data - will show empty state until real comments system is implemented
+  const comments = [];
 
   const getStatusIcon = (status: string) => {
     return status === 'completed' ? (
@@ -244,43 +235,7 @@ export const Progress = () => {
         <div className="space-y-4">
           <h2 className="text-lg font-semibold">Timeline of Coach Feedback</h2>
           
-          {mockComments.map((comment, index) => (
-            <Card key={comment.id} className="sport-card">
-              <CardContent className="p-4">
-                <div className="flex items-start space-x-4">
-                  <div className="flex flex-col items-center">
-                    <div className="gradient-primary p-2 rounded-full">
-                      {getTypeIcon(comment.type)}
-                    </div>
-                    {index < mockComments.length - 1 && (
-                      <div className="w-px h-8 bg-border mt-2" />
-                    )}
-                  </div>
-                  
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <span className="font-medium">{comment.source}</span>
-                        <Badge variant="outline" className="text-xs">
-                          {comment.type}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <Calendar className="h-3 w-3 mr-1" />
-                        {new Date(comment.date).toLocaleDateString()}
-                      </div>
-                    </div>
-                    
-                    <p className="text-sm">{comment.comment}</p>
-                    
-                    <div className="flex items-center text-xs text-muted-foreground">
-                      <span>From: {comment.session}</span>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          {/* No comments to display - real comments system not implemented yet */}
         </div>
       )}
 
@@ -306,7 +261,7 @@ export const Progress = () => {
         </Card>
       )}
 
-      {activeTab === 'comments' && mockComments.length === 0 && (
+      {activeTab === 'comments' && (
         <Card className="sport-card">
           <CardContent className="text-center py-12">
             <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
