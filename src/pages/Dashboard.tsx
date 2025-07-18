@@ -18,28 +18,11 @@ export const Dashboard = () => {
   });
   const [recentActivity, setRecentActivity] = useState([]);
 
-  console.log('Dashboard profile:', profile, 'loading:', loading);
-  
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
-      </div>
-    );
-  }
-
-  if (!profile) {
-    return (
-      <div className="text-center space-y-4 p-8">
-        <h2 className="text-xl font-semibold text-foreground">Profile not found</h2>
-        <p className="text-muted-foreground">Unable to load your profile data.</p>
-      </div>
-    );
-  }
-
-  // Fetch analytics data
+  // Move useEffect BEFORE any early returns to fix hook order
   useEffect(() => {
     const fetchAnalytics = async () => {
+      if (!profile) return; // Guard clause inside useEffect instead
+
       try {
         // Get the athlete record for this profile
         const { data: athleteData, error: athleteError } = await supabase
@@ -114,10 +97,27 @@ export const Dashboard = () => {
       }
     };
 
-    if (profile) {
-      fetchAnalytics();
-    }
-  }, [profile]);
+    fetchAnalytics();
+  }, [profile]); // useEffect dependency on profile
+
+  console.log('Dashboard profile:', profile, 'loading:', loading);
+  
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="text-center space-y-4 p-8">
+        <h2 className="text-xl font-semibold text-foreground">Profile not found</h2>
+        <p className="text-muted-foreground">Unable to load your profile data.</p>
+      </div>
+    );
+  }
 
   const isCoach = profile.role === 'coach';
 
