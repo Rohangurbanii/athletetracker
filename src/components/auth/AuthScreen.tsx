@@ -13,7 +13,7 @@ import { Dumbbell, Trophy, Users, Shield } from 'lucide-react';
 export const AuthScreen = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { signIn, signUp, signUpAdmin } = useAuth();
-  const { clubs, loading: clubsLoading } = useClubs();
+  const { clubs, loading: clubsLoading, refetch: refetchClubs } = useClubs();
 
   const [signInForm, setSignInForm] = useState({
     email: '',
@@ -66,6 +66,10 @@ export const AuthScreen = () => {
     setIsLoading(true);
     try {
       await signUpAdmin(adminSignUpForm.email, adminSignUpForm.password, adminSignUpForm.fullName, adminSignUpForm.clubName);
+      // Refresh clubs list after successful admin signup
+      setTimeout(() => {
+        refetchClubs();
+      }, 1000); // Small delay to ensure the trigger has processed
     } catch (error) {
       // Error handled in useAuth
     } finally {
@@ -183,7 +187,18 @@ export const AuthScreen = () => {
                   
                   {/* Club Selection */}
                   <div className="space-y-2">
-                    <Label htmlFor="club-select">Select Club</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="club-select">Select Club</Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={refetchClubs}
+                        disabled={clubsLoading}
+                      >
+                        {clubsLoading ? 'Loading...' : 'Refresh'}
+                      </Button>
+                    </div>
                     <Select 
                       value={signUpForm.clubId} 
                       onValueChange={(value) => setSignUpForm({ ...signUpForm, clubId: value })}
