@@ -2,19 +2,27 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { Calendar, Plus, Clock, Star } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 
 export const Practice = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const isCoach = profile?.role === 'coach';
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [sessions, setSessions] = useState([]);
   const [upcomingPractices, setUpcomingPractices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [rpeDialogOpen, setRpeDialogOpen] = useState(false);
+  const [selectedSession, setSelectedSession] = useState(null);
+  const [selectedRpe, setSelectedRpe] = useState('');
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -160,6 +168,67 @@ export const Practice = () => {
     fetchSessions();
   }, [profile, selectedDate]);
 
+  const handleRpeSubmit = async () => {
+    if (!selectedSession || !selectedRpe || !profile) return;
+
+    try {
+      // Get the athlete record for this profile
+      const { data: athleteData } = await supabase
+        .from('athletes')
+        .select('id')
+        .eq('profile_id', profile.id)
+        .maybeSingle();
+
+      if (!athleteData) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Athlete record not found.",
+        });
+        return;
+      }
+
+      // Create RPE log for this practice session
+      const { error: rpeError } = await supabase
+        .from('rpe_logs')
+        .insert({
+          athlete_id: athleteData.id,
+          club_id: profile.club_id,
+          log_date: selectedDate,
+          rpe_score: parseInt(selectedRpe),
+          duration_minutes: selectedSession.duration_minutes || 0,
+          activity_type: selectedSession.session_type || 'Practice',
+          notes: `RPE for scheduled practice: ${selectedSession.notes || 'Practice session'}`
+        });
+
+      if (rpeError) throw rpeError;
+
+      toast({
+        title: "RPE logged successfully!",
+        description: "Your effort rating has been recorded for this practice.",
+      });
+
+      setRpeDialogOpen(false);
+      setSelectedSession(null);
+      setSelectedRpe('');
+      
+      // Refresh the sessions to reflect the change
+      window.location.reload();
+    } catch (error: any) {
+      console.error('Error logging RPE:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to log RPE. Please try again.",
+      });
+    }
+  };
+
+  const openRpeDialog = (session) => {
+    setSelectedSession(session);
+    setRpeDialogOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -296,23 +365,32 @@ export const Practice = () => {
                     <div className="flex space-x-2">
                       <Button 
                         variant="outline" 
-                        className="flex-1"
-                        onClick={() => navigate('/log-session')}
+                        className="flex-1 bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/30"
+                        onClick={() => openRpeDialog(session)}
                       >
-                        Log Session
+                        <Star className="h-4 w-4 mr-2" />
+                        Log RPE
                       </Button>
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="flex space-x-2">
-                  <Button 
-                    variant="outline" 
-                    className="flex-1"
-                    onClick={() => navigate('/log-session')}
-                  >
-                    Log Session
-                  </Button>
+                <div>
+                  {session.notes && (
+                    <div className="stat-card mb-3">
+                      <p className="text-sm text-muted-foreground">Session Details:</p>
+                      <p className="text-sm">{session.notes}</p>
+                    </div>
+                  )}
+                  <div className="flex space-x-2">
+                    <Button 
+                      variant="outline" 
+                      className="flex-1"
+                      onClick={() => navigate('/log-session')}
+                    >
+                      Log Session
+                    </Button>
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -342,6 +420,65 @@ export const Practice = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* RPE Dialog */}
+      <Dialog open={rpeDialogOpen} onOpenChange={setRpeDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <Star className="h-5 w-5" />
+              <span>Log RPE for Practice</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {selectedSession && (
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <p className="font-medium">{selectedSession.title}</p>
+                <p className="text-sm text-muted-foreground">
+                  {selectedSession.duration} • {selectedSession.type}
+                </p>
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <Label htmlFor="rpe">Rate of Perceived Exertion (1-10)</Label>
+              <Select value={selectedRpe} onValueChange={setSelectedRpe}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select your effort level" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 10 }, (_, i) => i + 1).map((num) => (
+                    <SelectItem key={num} value={num.toString()}>
+                      <div className="flex items-center space-x-2">
+                        <Star className="h-4 w-4" />
+                        <span>{num} - {num <= 3 ? 'Easy' : num <= 6 ? 'Moderate' : num <= 8 ? 'Hard' : 'Maximum'}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex space-x-2 pt-4">
+              <Button 
+                variant="outline" 
+                className="flex-1"
+                onClick={() => setRpeDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                className="flex-1 gradient-primary text-primary-foreground"
+                onClick={handleRpeSubmit}
+                disabled={!selectedRpe}
+              >
+                <Star className="h-4 w-4 mr-2" />
+                Log RPE
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
