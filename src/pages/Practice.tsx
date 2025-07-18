@@ -24,8 +24,7 @@ export const Practice = () => {
   const [selectedSession, setSelectedSession] = useState(null);
   const [selectedRpe, setSelectedRpe] = useState('');
 
-  useEffect(() => {
-    const fetchSessions = async () => {
+  const fetchSessions = async () => {
       if (!profile) return;
 
       try {
@@ -165,6 +164,7 @@ export const Practice = () => {
       }
     };
 
+  useEffect(() => {
     fetchSessions();
   }, [profile, selectedDate]);
 
@@ -212,8 +212,8 @@ export const Practice = () => {
       setSelectedSession(null);
       setSelectedRpe('');
       
-      // Refresh the sessions to reflect the change
-      window.location.reload();
+      // Refresh the sessions data without page reload
+      await fetchSessions();
     } catch (error: any) {
       console.error('Error logging RPE:', error);
       toast({
