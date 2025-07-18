@@ -13,6 +13,7 @@ export const Practice = () => {
   const isCoach = profile?.role === 'coach';
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [sessions, setSessions] = useState([]);
+  const [upcomingPractices, setUpcomingPractices] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,17 +38,29 @@ export const Practice = () => {
           if (!athleteData) {
             console.log('No athlete record found');
             setSessions([]);
+            setUpcomingPractices([]);
             setLoading(false);
             return;
           }
 
-          // Get scheduled practice sessions for the athlete
+          // Get scheduled practice sessions for the athlete (selected date)
           const { data: practiceData, error: practiceError } = await supabase
             .from('practice_sessions')
             .select('*')
             .eq('athlete_id', athleteData.id)
             .eq('session_date', selectedDate)
             .order('created_at', { ascending: false });
+
+          // Get upcoming practice sessions (next 7 days)
+          const nextWeek = new Date();
+          nextWeek.setDate(nextWeek.getDate() + 7);
+          const { data: upcomingData, error: upcomingError } = await supabase
+            .from('practice_sessions')
+            .select('*')
+            .eq('athlete_id', athleteData.id)
+            .gte('session_date', new Date().toISOString().split('T')[0])
+            .lte('session_date', nextWeek.toISOString().split('T')[0])
+            .order('session_date', { ascending: true });
 
           // Get RPE logs for the selected date
           const { data: rpeData, error: rpeError } = await supabase
@@ -57,9 +70,10 @@ export const Practice = () => {
             .eq('log_date', selectedDate)
             .order('created_at', { ascending: false });
 
-          if (practiceError || rpeError) {
-            console.error('Error fetching sessions:', { practiceError, rpeError });
+          if (practiceError || rpeError || upcomingError) {
+            console.error('Error fetching sessions:', { practiceError, rpeError, upcomingError });
             setSessions([]);
+            setUpcomingPractices([]);
           } else {
             // Transform practice sessions to session format
             const practiceTransformed = (practiceData || []).map(session => ({
@@ -84,17 +98,60 @@ export const Practice = () => {
               notes: log.notes
             }));
 
-            // Combine and sort sessions
+            // Transform upcoming practices
+            const upcomingTransformed = (upcomingData || []).map(session => ({
+              id: `upcoming-${session.id}`,
+              title: session.notes?.split(':')[0] || 'Practice Session',
+              date: session.session_date,
+              duration: `${session.duration_minutes || 0} mins`,
+              type: session.session_type || 'Practice',
+              status: 'scheduled',
+              notes: session.notes
+            }));
+
+            // Combine and sort sessions for selected date
             const allSessions = [...practiceTransformed, ...rpeTransformed];
             setSessions(allSessions);
+            setUpcomingPractices(upcomingTransformed);
           }
+        } else if (profile.role === 'coach') {
+          // For coaches, show practices they've scheduled
+          const { data: coach } = await supabase
+            .from('coaches')
+            .select('id')
+            .eq('profile_id', profile.id)
+            .maybeSingle();
+
+          if (coach) {
+            const { data: coachPractices } = await supabase
+              .from('practice_sessions')
+              .select('*, athletes!inner(profile_id, profiles!inner(full_name))')
+              .eq('coach_id', coach.id)
+              .eq('session_date', selectedDate)
+              .order('created_at', { ascending: false });
+
+            const coachTransformed = (coachPractices || []).map(session => ({
+              id: `coach-${session.id}`,
+              title: session.notes?.split(':')[0] || 'Practice Session',
+              time: 'Scheduled',
+              duration: `${session.duration_minutes || 0} mins`,
+              type: session.session_type || 'Practice',
+              status: 'scheduled',
+              notes: session.notes,
+              athlete: session.athletes?.profiles?.full_name || 'Athlete'
+            }));
+
+            setSessions(coachTransformed);
+          }
+          setUpcomingPractices([]);
         } else {
-          // For coaches, show empty for now (they can use dashboard to manage)
           setSessions([]);
+          setUpcomingPractices([]);
         }
       } catch (error) {
         console.error('Error:', error);
         setSessions([]);
+        setUpcomingPractices([]);
       } finally {
         setLoading(false);
       }
@@ -110,7 +167,7 @@ export const Practice = () => {
         <div>
           <h1 className="text-2xl font-bold">Practice Sessions</h1>
           <p className="text-muted-foreground">
-            {isCoach ? 'Manage your athletes\' training' : 'Track your training sessions'}
+            {isCoach ? 'View scheduled practices and team sessions' : 'Track your training sessions and upcoming practices'}
           </p>
         </div>
         {!isCoach && (
@@ -139,6 +196,35 @@ export const Practice = () => {
         </CardContent>
       </Card>
 
+      {/* Upcoming Practices Section (for athletes) */}
+      {profile?.role === 'athlete' && upcomingPractices.length > 0 && (
+        <Card className="sport-card">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center space-x-2">
+              <Calendar className="h-5 w-5" />
+              <span>Upcoming Practices</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {upcomingPractices.slice(0, 3).map((practice) => (
+                <div key={practice.id} className="flex items-center justify-between p-3 bg-card/50 rounded-lg border">
+                  <div>
+                    <p className="font-medium">{practice.title}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {new Date(practice.date).toLocaleDateString()} • {practice.duration} • {practice.type}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="bg-blue-500/20 text-blue-400">
+                    {practice.status}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Sessions List */}
       {loading ? (
         <div className="flex items-center justify-center py-8">
@@ -159,10 +245,19 @@ export const Practice = () => {
                     </span>
                     <span>{session.duration}</span>
                     <Badge variant="outline">{session.type}</Badge>
+                    {session.athlete && (
+                      <span className="text-xs bg-muted px-2 py-1 rounded">
+                        {session.athlete}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <Badge 
-                  className={session.status === 'completed' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'}
+                  className={
+                    session.status === 'completed' ? 'bg-green-500/20 text-green-400' : 
+                    session.status === 'scheduled' ? 'bg-blue-500/20 text-blue-400' :
+                    'bg-gray-500/20 text-gray-400'
+                  }
                 >
                   {session.status}
                 </Badge>
@@ -186,6 +281,26 @@ export const Practice = () => {
                     <div className="stat-card mt-2">
                       <p className="text-sm text-muted-foreground">Notes:</p>
                       <p className="text-sm">{session.notes}</p>
+                    </div>
+                  )}
+                </div>
+              ) : session.status === 'scheduled' ? (
+                <div>
+                  {session.notes && (
+                    <div className="stat-card mb-3">
+                      <p className="text-sm text-muted-foreground">Practice Details:</p>
+                      <p className="text-sm">{session.notes}</p>
+                    </div>
+                  )}
+                  {profile?.role === 'athlete' && (
+                    <div className="flex space-x-2">
+                      <Button 
+                        variant="outline" 
+                        className="flex-1"
+                        onClick={() => navigate('/log-session')}
+                      >
+                        Log Session
+                      </Button>
                     </div>
                   )}
                 </div>
