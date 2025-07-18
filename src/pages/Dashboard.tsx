@@ -38,22 +38,33 @@ export const Dashboard = () => {
         if (coach) {
           const { data: batchesData } = await supabase
             .from('batches')
-            .select(`
-              id,
-              name,
-              description,
-              created_at,
-              batch_athletes(
-                athlete:athletes(
-                  id,
-                  profile:profiles!athletes_profile_id_fkey(full_name)
-                )
-              )
-            `)
+            .select('id, name, description, created_at')
             .eq('coach_id', coach.id)
             .order('created_at', { ascending: false });
 
-          setBatches(batchesData || []);
+          // Get athlete count for each batch separately
+          const batchesWithAthletes = await Promise.all(
+            (batchesData || []).map(async (batch) => {
+              const { data: batchAthletes } = await supabase
+                .from('batch_athletes')
+                .select(`
+                  athlete:athletes(
+                    id,
+                    profile:profiles!athletes_profile_id_fkey(
+                      full_name
+                    )
+                  )
+                `)
+                .eq('batch_id', batch.id);
+
+              return {
+                ...batch,
+                batch_athletes: batchAthletes || []
+              };
+            })
+          );
+
+          setBatches(batchesWithAthletes);
         }
         return; // Coach dashboard doesn't need athlete analytics
       }
