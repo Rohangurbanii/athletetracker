@@ -1,78 +1,87 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Target, MessageSquare, CheckCircle, Clock, Plus, Calendar } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 
 export const Progress = () => {
   const { profile } = useAuth();
+  const navigate = useNavigate();
   const isCoach = profile?.role === 'coach';
-
   const [activeTab, setActiveTab] = useState<'goals' | 'comments'>('goals');
+  const [goals, setGoals] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const mockGoals = [
-    {
-      id: '1',
-      title: 'Improve Backhand Consistency',
-      description: 'Focus on follow-through and footwork positioning',
-      status: 'in_progress',
-      targetDate: '2024-03-01',
-      progress: 75,
-      createdDate: '2024-01-15',
-    },
-    {
-      id: '2',
-      title: 'Increase Mental Resilience',
-      description: 'Work on staying focused during pressure situations',
-      status: 'in_progress',
-      targetDate: '2024-02-28',
-      progress: 60,
-      createdDate: '2024-01-10',
-    },
-    {
-      id: '3',
-      title: 'Master Drop Shot Technique',
-      description: 'Perfect the drop shot for tournament play',
-      status: 'completed',
-      targetDate: '2024-01-30',
-      progress: 100,
-      createdDate: '2024-01-01',
-    },
-  ];
+  useEffect(() => {
+    const fetchGoals = async () => {
+      if (!profile) return;
 
+      try {
+        // Get the athlete record for this profile
+        const { data: athleteData, error: athleteError } = await supabase
+          .from('athletes')
+          .select('id')
+          .eq('profile_id', profile.id)
+          .maybeSingle();
+
+        if (athleteError) {
+          console.error('Error fetching athlete:', athleteError);
+          setLoading(false);
+          return;
+        }
+
+        if (!athleteData) {
+          console.log('No athlete record found');
+          setGoals([]);
+          setLoading(false);
+          return;
+        }
+
+        // Get goals for this athlete
+        const { data: goalsData, error: goalsError } = await supabase
+          .from('goals')
+          .select('*')
+          .eq('athlete_id', athleteData.id)
+          .order('created_at', { ascending: false });
+
+        if (goalsError) {
+          console.error('Error fetching goals:', goalsError);
+          setGoals([]);
+        } else {
+          const transformedGoals = (goalsData || []).map(goal => ({
+            id: goal.id,
+            title: goal.title,
+            description: goal.description,
+            status: goal.status === 'completed' ? 'completed' : 'in_progress',
+            targetDate: goal.target_date,
+            progress: goal.progress_percentage || 0,
+            createdDate: goal.created_at?.split('T')[0] || ''
+          }));
+          setGoals(transformedGoals);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        setGoals([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchGoals();
+  }, [profile]);
+
+  // Mock comments for now - in a real app this would come from a comments table
   const mockComments = [
     {
       id: '1',
-      date: '2024-01-20',
+      date: new Date().toISOString().split('T')[0],
       type: 'practice',
-      source: 'Coach Sarah',
-      comment: 'Excellent improvement in backhand consistency today. Keep focusing on the follow-through.',
-      session: 'Morning Training',
-    },
-    {
-      id: '2',
-      date: '2024-01-18',
-      type: 'tournament',
-      source: 'Coach Sarah',
-      comment: 'Great mental toughness in the final set. Your patience paid off in key moments.',
-      session: 'Winter Classic Tournament',
-    },
-    {
-      id: '3',
-      date: '2024-01-15',
-      type: 'practice',
-      source: 'Coach Sarah',
-      comment: 'Need to work on footwork positioning. Focus on getting to the ball earlier.',
-      session: 'Technical Session',
-    },
-    {
-      id: '4',
-      date: '2024-01-12',
-      type: 'practice',
-      source: 'Coach Sarah',
-      comment: 'Drop shot technique is looking much better. Ready to use it in match situations.',
-      session: 'Strategy Session',
+      source: 'Coach',
+      comment: 'Keep up the great work on your goals!',
+      session: 'Recent Training',
     },
   ];
 
@@ -102,8 +111,11 @@ export const Progress = () => {
             {isCoach ? 'Track your athletes\' development journey' : 'Monitor your growth and achievements'}
           </p>
         </div>
-        {isCoach && (
-          <Button className="gradient-primary text-primary-foreground">
+        {!isCoach && (
+          <Button 
+            className="gradient-primary text-primary-foreground"
+            onClick={() => navigate('/set-goal')}
+          >
             <Plus className="h-4 w-4 mr-2" />
             Set Goal
           </Button>
@@ -136,8 +148,13 @@ export const Progress = () => {
 
       {/* Goals Tab */}
       {activeTab === 'goals' && (
-        <div className="space-y-4">
-          {mockGoals.map((goal) => (
+        loading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {goals.map((goal) => (
             <Card key={goal.id} className="sport-card">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
@@ -218,7 +235,8 @@ export const Progress = () => {
               </CardContent>
             </Card>
           ))}
-        </div>
+          </div>
+        )
       )}
 
       {/* Comments Tab */}
@@ -267,16 +285,19 @@ export const Progress = () => {
       )}
 
       {/* Empty States */}
-      {activeTab === 'goals' && mockGoals.length === 0 && (
+      {activeTab === 'goals' && !loading && goals.length === 0 && (
         <Card className="sport-card">
           <CardContent className="text-center py-12">
             <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">No goals set</h3>
             <p className="text-muted-foreground mb-4">
-              {isCoach ? 'Set specific goals to track athlete development' : 'Work with your coach to set training goals'}
+              Start setting specific goals to track your development
             </p>
-            {isCoach && (
-              <Button className="gradient-primary text-primary-foreground">
+            {!isCoach && (
+              <Button 
+                className="gradient-primary text-primary-foreground"
+                onClick={() => navigate('/set-goal')}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Set First Goal
               </Button>

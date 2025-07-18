@@ -1,46 +1,98 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Moon, Plus, Star, Clock, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 
 export const Sleep = () => {
   const { profile } = useAuth();
+  const navigate = useNavigate();
   const isCoach = profile?.role === 'coach';
+  const [sleepData, setSleepData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [analytics, setAnalytics] = useState({
+    averageQuality: 0,
+    averageDuration: '0h 0m'
+  });
 
-  const mockSleepData = [
-    {
-      id: '1',
-      date: '2024-01-15',
-      bedtime: '22:30',
-      wakeTime: '06:30',
-      duration: '8h 0m',
-      quality: 4,
-      notes: 'Felt well rested',
-    },
-    {
-      id: '2',
-      date: '2024-01-14',
-      bedtime: '23:15',
-      wakeTime: '06:45',
-      duration: '7h 30m',
-      quality: 3,
-      notes: 'Woke up a few times',
-    },
-    {
-      id: '3',
-      date: '2024-01-13',
-      bedtime: '22:00',
-      wakeTime: '06:00',
-      duration: '8h 0m',
-      quality: 5,
-      notes: 'Perfect sleep',
-    },
-  ];
+  useEffect(() => {
+    const fetchSleepData = async () => {
+      if (!profile) return;
 
-  const averageQuality = mockSleepData.reduce((sum, sleep) => sum + sleep.quality, 0) / mockSleepData.length;
-  const averageDuration = '7h 50m'; // Would be calculated from actual data
+      try {
+        // Get the athlete record for this profile
+        const { data: athleteData, error: athleteError } = await supabase
+          .from('athletes')
+          .select('id')
+          .eq('profile_id', profile.id)
+          .maybeSingle();
+
+        if (athleteError) {
+          console.error('Error fetching athlete:', athleteError);
+          setLoading(false);
+          return;
+        }
+
+        if (!athleteData) {
+          console.log('No athlete record found');
+          setSleepData([]);
+          setLoading(false);
+          return;
+        }
+
+        // Get sleep logs for the past 30 days
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        const { data: sleepLogs, error: sleepError } = await supabase
+          .from('sleep_logs')
+          .select('*')
+          .eq('athlete_id', athleteData.id)
+          .gte('sleep_date', thirtyDaysAgo.toISOString().split('T')[0])
+          .order('sleep_date', { ascending: false });
+
+        if (sleepError) {
+          console.error('Error fetching sleep data:', sleepError);
+          setSleepData([]);
+        } else {
+          const transformedData = (sleepLogs || []).map(log => ({
+            id: log.id,
+            date: log.sleep_date,
+            bedtime: log.bedtime,
+            wakeTime: log.wake_time,
+            duration: `${Math.floor(log.duration_hours)}h ${Math.floor((log.duration_hours % 1) * 60)}m`,
+            quality: log.quality_rating,
+            notes: log.notes
+          }));
+
+          setSleepData(transformedData);
+
+          // Calculate analytics
+          if (sleepLogs.length > 0) {
+            const avgQuality = sleepLogs.reduce((sum, log) => sum + (log.quality_rating || 0), 0) / sleepLogs.length;
+            const avgDurationHours = sleepLogs.reduce((sum, log) => sum + (log.duration_hours || 0), 0) / sleepLogs.length;
+            const avgHours = Math.floor(avgDurationHours);
+            const avgMinutes = Math.floor((avgDurationHours % 1) * 60);
+
+            setAnalytics({
+              averageQuality: Math.round(avgQuality * 10) / 10,
+              averageDuration: `${avgHours}h ${avgMinutes}m`
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        setSleepData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSleepData();
+  }, [profile]);
 
   const renderStars = (quality: number) => {
     return Array.from({ length: 5 }, (_, index) => (
@@ -64,7 +116,10 @@ export const Sleep = () => {
           </p>
         </div>
         {!isCoach && (
-          <Button className="gradient-primary text-primary-foreground">
+          <Button 
+            className="gradient-primary text-primary-foreground"
+            onClick={() => navigate('/log-sleep')}
+          >
             <Plus className="h-4 w-4 mr-2" />
             Log Sleep
           </Button>
@@ -81,7 +136,7 @@ export const Sleep = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Avg Duration</p>
-                <p className="text-xl font-bold">{averageDuration}</p>
+                <p className="text-xl font-bold">{analytics.averageDuration}</p>
               </div>
             </div>
           </CardContent>
@@ -95,7 +150,7 @@ export const Sleep = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Avg Quality</p>
-                <p className="text-xl font-bold">{averageQuality.toFixed(1)}/5</p>
+                <p className="text-xl font-bold">{analytics.averageQuality}/5</p>
               </div>
             </div>
           </CardContent>
@@ -103,10 +158,15 @@ export const Sleep = () => {
       </div>
 
       {/* Sleep History */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold">Sleep History</h2>
-        
-        {mockSleepData.map((sleep) => (
+      {loading ? (
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold">Sleep History</h2>
+          
+          {sleepData.map((sleep) => (
           <Card key={sleep.id} className="sport-card">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -150,36 +210,11 @@ export const Sleep = () => {
             </CardContent>
           </Card>
         ))}
-      </div>
-
-      {/* Weekly Trend */}
-      <Card className="sport-card">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <TrendingUp className="h-5 w-5" />
-            <span>Weekly Trend</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Sleep Quality Improving</span>
-              <Badge className="bg-green-500/20 text-green-400">+12%</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Duration Consistent</span>
-              <Badge variant="outline">7h 45m avg</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Recovery Score</span>
-              <Badge className="bg-blue-500/20 text-blue-400">85%</Badge>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      )}
 
       {/* Empty State */}
-      {mockSleepData.length === 0 && (
+      {!loading && sleepData.length === 0 && (
         <Card className="sport-card">
           <CardContent className="text-center py-12">
             <Moon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -188,7 +223,10 @@ export const Sleep = () => {
               Start tracking your sleep to improve recovery
             </p>
             {!isCoach && (
-              <Button className="gradient-primary text-primary-foreground">
+              <Button 
+                className="gradient-primary text-primary-foreground"
+                onClick={() => navigate('/log-sleep')}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Log Your First Sleep
               </Button>
