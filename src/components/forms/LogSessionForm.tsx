@@ -52,14 +52,22 @@ export const LogSessionForm = () => {
     
     try {
       // Get the athlete record for this profile
+      console.log('Looking for athlete record for profile:', profile.id);
       const { data: athleteData, error: athleteError } = await supabase
         .from('athletes')
         .select('id')
         .eq('profile_id', profile.id)
-        .single();
+        .maybeSingle(); // Use maybeSingle instead of single
 
-      if (athleteError || !athleteData) {
-        throw new Error('Athlete record not found');
+      console.log('Athlete query result:', { athleteData, athleteError });
+
+      if (athleteError) {
+        console.error('Error querying athlete:', athleteError);
+        throw athleteError;
+      }
+
+      if (!athleteData) {
+        throw new Error('No athlete record found for your profile. Please contact your coach or admin.');
       }
 
       // Insert RPE log
