@@ -45,21 +45,37 @@ export const Dashboard = () => {
           // Get athlete count for each batch separately
           const batchesWithAthletes = await Promise.all(
             (batchesData || []).map(async (batch) => {
-              const { data: batchAthletes } = await supabase
+              // First get the batch_athletes records
+              const { data: batchAthleteIds } = await supabase
                 .from('batch_athletes')
+                .select('athlete_id')
+                .eq('batch_id', batch.id);
+
+              // Then get athlete details for those IDs
+              const athleteIds = (batchAthleteIds || []).map(ba => ba.athlete_id);
+              
+              if (athleteIds.length === 0) {
+                return {
+                  ...batch,
+                  batch_athletes: []
+                };
+              }
+
+              const { data: athletes } = await supabase
+                .from('athletes')
                 .select(`
-                  athlete:athletes(
-                    id,
-                    profile:profiles!athletes_profile_id_fkey(
-                      full_name
-                    )
+                  id,
+                  profile:profiles!athletes_profile_id_fkey(
+                    full_name
                   )
                 `)
-                .eq('batch_id', batch.id);
+                .in('id', athleteIds);
 
               return {
                 ...batch,
-                batch_athletes: batchAthletes || []
+                batch_athletes: (athletes || []).map(athlete => ({
+                  athlete
+                }))
               };
             })
           );
