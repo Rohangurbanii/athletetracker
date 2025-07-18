@@ -319,7 +319,7 @@ export const Dashboard = () => {
               <Button 
                 variant="outline" 
                 className="h-12"
-                onClick={() => navigate('/practice')}
+                onClick={() => navigate('/schedule-practice')}
               >
                 <Calendar className="h-5 w-5 mr-2" />
                 Schedule Practice

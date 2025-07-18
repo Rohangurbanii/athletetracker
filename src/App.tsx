@@ -15,6 +15,7 @@ import { Progress } from "@/pages/Progress";
 import { LogSessionForm } from "@/components/forms/LogSessionForm";
 import { LogSleepForm } from "@/components/forms/LogSleepForm";
 import { SetGoalForm } from "@/components/forms/SetGoalForm";
+import { SchedulePracticeForm } from "@/components/forms/SchedulePracticeForm";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,6 +48,7 @@ const ProtectedRoutes = () => {
         <Route path="log-session" element={<LogSessionForm />} />
         <Route path="log-sleep" element={<LogSleepForm />} />
         <Route path="set-goal" element={<SetGoalForm />} />
+        <Route path="schedule-practice" element={<SchedulePracticeForm />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

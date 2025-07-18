@@ -20,50 +20,77 @@ export const Practice = () => {
       if (!profile) return;
 
       try {
-        // Get the athlete record for this profile
-        const { data: athleteData, error: athleteError } = await supabase
-          .from('athletes')
-          .select('id')
-          .eq('profile_id', profile.id)
-          .maybeSingle();
+        if (profile.role === 'athlete') {
+          // Get the athlete record for this profile
+          const { data: athleteData, error: athleteError } = await supabase
+            .from('athletes')
+            .select('id')
+            .eq('profile_id', profile.id)
+            .maybeSingle();
 
-        if (athleteError) {
-          console.error('Error fetching athlete:', athleteError);
-          setLoading(false);
-          return;
-        }
+          if (athleteError) {
+            console.error('Error fetching athlete:', athleteError);
+            setLoading(false);
+            return;
+          }
 
-        if (!athleteData) {
-          console.log('No athlete record found');
-          setSessions([]);
-          setLoading(false);
-          return;
-        }
+          if (!athleteData) {
+            console.log('No athlete record found');
+            setSessions([]);
+            setLoading(false);
+            return;
+          }
 
-        // Get RPE logs for the selected date
-        const { data: rpeData, error: rpeError } = await supabase
-          .from('rpe_logs')
-          .select('*')
-          .eq('athlete_id', athleteData.id)
-          .eq('log_date', selectedDate)
-          .order('created_at', { ascending: false });
+          // Get scheduled practice sessions for the athlete
+          const { data: practiceData, error: practiceError } = await supabase
+            .from('practice_sessions')
+            .select('*')
+            .eq('athlete_id', athleteData.id)
+            .eq('session_date', selectedDate)
+            .order('created_at', { ascending: false });
 
-        if (rpeError) {
-          console.error('Error fetching sessions:', rpeError);
-          setSessions([]);
+          // Get RPE logs for the selected date
+          const { data: rpeData, error: rpeError } = await supabase
+            .from('rpe_logs')
+            .select('*')
+            .eq('athlete_id', athleteData.id)
+            .eq('log_date', selectedDate)
+            .order('created_at', { ascending: false });
+
+          if (practiceError || rpeError) {
+            console.error('Error fetching sessions:', { practiceError, rpeError });
+            setSessions([]);
+          } else {
+            // Transform practice sessions to session format
+            const practiceTransformed = (practiceData || []).map(session => ({
+              id: `practice-${session.id}`,
+              title: session.notes?.split(':')[0] || 'Practice Session',
+              time: 'Scheduled',
+              duration: `${session.duration_minutes || 0} mins`,
+              type: session.session_type || 'Practice',
+              status: 'scheduled',
+              notes: session.notes
+            }));
+
+            // Transform RPE logs to session format
+            const rpeTransformed = (rpeData || []).map(log => ({
+              id: `rpe-${log.id}`,
+              title: log.activity_type || 'Training Session',
+              time: 'Logged',
+              duration: `${log.duration_minutes || 0} mins`,
+              type: log.activity_type || 'Training',
+              athleteRpe: log.rpe_score,
+              status: 'completed',
+              notes: log.notes
+            }));
+
+            // Combine and sort sessions
+            const allSessions = [...practiceTransformed, ...rpeTransformed];
+            setSessions(allSessions);
+          }
         } else {
-          // Transform RPE logs to session format
-          const transformedSessions = (rpeData || []).map(log => ({
-            id: log.id,
-            title: log.activity_type || 'Training Session',
-            time: 'Logged',
-            duration: `${log.duration_minutes || 0} mins`,
-            type: log.activity_type || 'Training',
-            athleteRpe: log.rpe_score,
-            status: 'completed',
-            notes: log.notes
-          }));
-          setSessions(transformedSessions);
+          // For coaches, show empty for now (they can use dashboard to manage)
+          setSessions([]);
         }
       } catch (error) {
         console.error('Error:', error);
