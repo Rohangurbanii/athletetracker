@@ -18,20 +18,41 @@ export type Database = {
         Row: {
           club_id: string
           created_at: string | null
+          date_of_birth: string | null
+          emergency_contact: string | null
+          height_cm: number | null
           id: string
+          position: string | null
           profile_id: string
+          sport: string | null
+          updated_at: string | null
+          weight_kg: number | null
         }
         Insert: {
           club_id: string
           created_at?: string | null
+          date_of_birth?: string | null
+          emergency_contact?: string | null
+          height_cm?: number | null
           id?: string
+          position?: string | null
           profile_id: string
+          sport?: string | null
+          updated_at?: string | null
+          weight_kg?: number | null
         }
         Update: {
           club_id?: string
           created_at?: string | null
+          date_of_birth?: string | null
+          emergency_contact?: string | null
+          height_cm?: number | null
           id?: string
+          position?: string | null
           profile_id?: string
+          sport?: string | null
+          updated_at?: string | null
+          weight_kg?: number | null
         }
         Relationships: [
           {
@@ -53,27 +74,33 @@ export type Database = {
       attendance: {
         Row: {
           athlete_id: string
-          attended_on: string
           club_id: string
           created_at: string | null
           id: string
+          notes: string | null
+          session_date: string
           status: string | null
+          updated_at: string | null
         }
         Insert: {
           athlete_id: string
-          attended_on: string
           club_id: string
           created_at?: string | null
           id?: string
+          notes?: string | null
+          session_date: string
           status?: string | null
+          updated_at?: string | null
         }
         Update: {
           athlete_id?: string
-          attended_on?: string
           club_id?: string
           created_at?: string | null
           id?: string
+          notes?: string | null
+          session_date?: string
           status?: string | null
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -94,34 +121,54 @@ export type Database = {
       }
       clubs: {
         Row: {
+          admin_id: string | null
           created_at: string | null
+          description: string | null
           id: string
           name: string
+          updated_at: string | null
         }
         Insert: {
+          admin_id?: string | null
           created_at?: string | null
+          description?: string | null
           id?: string
           name: string
+          updated_at?: string | null
         }
         Update: {
+          admin_id?: string | null
           created_at?: string | null
+          description?: string | null
           id?: string
           name?: string
+          updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "clubs_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       coach_athletes: {
         Row: {
+          assigned_at: string | null
           athlete_id: string
           coach_id: string
           id: string
         }
         Insert: {
+          assigned_at?: string | null
           athlete_id: string
           coach_id: string
           id?: string
         }
         Update: {
+          assigned_at?: string | null
           athlete_id?: string
           coach_id?: string
           id?: string
@@ -145,22 +192,34 @@ export type Database = {
       }
       coaches: {
         Row: {
+          certification: string | null
           club_id: string
           created_at: string | null
+          experience_years: number | null
           id: string
           profile_id: string
+          specialization: string | null
+          updated_at: string | null
         }
         Insert: {
+          certification?: string | null
           club_id: string
           created_at?: string | null
+          experience_years?: number | null
           id?: string
           profile_id: string
+          specialization?: string | null
+          updated_at?: string | null
         }
         Update: {
+          certification?: string | null
           club_id?: string
           created_at?: string | null
+          experience_years?: number | null
           id?: string
           profile_id?: string
+          specialization?: string | null
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -183,26 +242,38 @@ export type Database = {
         Row: {
           athlete_id: string
           created_at: string | null
-          description: string
+          description: string | null
           id: string
-          is_completed: boolean | null
+          priority: string | null
+          progress_percentage: number | null
+          status: string | null
           target_date: string | null
+          title: string
+          updated_at: string | null
         }
         Insert: {
           athlete_id: string
           created_at?: string | null
-          description: string
+          description?: string | null
           id?: string
-          is_completed?: boolean | null
+          priority?: string | null
+          progress_percentage?: number | null
+          status?: string | null
           target_date?: string | null
+          title: string
+          updated_at?: string | null
         }
         Update: {
           athlete_id?: string
           created_at?: string | null
-          description?: string
+          description?: string | null
           id?: string
-          is_completed?: boolean | null
+          priority?: string | null
+          progress_percentage?: number | null
+          status?: string | null
           target_date?: string | null
+          title?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -218,29 +289,38 @@ export type Database = {
         Row: {
           athlete_id: string
           club_id: string
+          coach_id: string | null
           created_at: string | null
           duration_minutes: number | null
           id: string
           notes: string | null
           session_date: string
+          session_type: string | null
+          updated_at: string | null
         }
         Insert: {
           athlete_id: string
           club_id: string
+          coach_id?: string | null
           created_at?: string | null
           duration_minutes?: number | null
           id?: string
           notes?: string | null
           session_date: string
+          session_type?: string | null
+          updated_at?: string | null
         }
         Update: {
           athlete_id?: string
           club_id?: string
+          coach_id?: string | null
           created_at?: string | null
           duration_minutes?: number | null
           id?: string
           notes?: string | null
           session_date?: string
+          session_type?: string | null
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -257,34 +337,50 @@ export type Database = {
             referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "practice_sessions_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
         ]
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           club_id: string | null
           created_at: string | null
           email: string
-          full_name: string | null
+          full_name: string
           id: string
+          phone: string | null
           role: string
+          updated_at: string | null
           user_id: string
         }
         Insert: {
+          avatar_url?: string | null
           club_id?: string | null
           created_at?: string | null
           email: string
-          full_name?: string | null
+          full_name: string
           id?: string
+          phone?: string | null
           role: string
+          updated_at?: string | null
           user_id: string
         }
         Update: {
+          avatar_url?: string | null
           club_id?: string | null
           created_at?: string | null
           email?: string
-          full_name?: string | null
+          full_name?: string
           id?: string
+          phone?: string | null
           role?: string
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: [
@@ -297,33 +393,99 @@ export type Database = {
           },
         ]
       }
+      rpe_logs: {
+        Row: {
+          activity_type: string | null
+          athlete_id: string
+          club_id: string
+          created_at: string | null
+          duration_minutes: number | null
+          id: string
+          log_date: string
+          notes: string | null
+          rpe_score: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          activity_type?: string | null
+          athlete_id: string
+          club_id: string
+          created_at?: string | null
+          duration_minutes?: number | null
+          id?: string
+          log_date: string
+          notes?: string | null
+          rpe_score?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          activity_type?: string | null
+          athlete_id?: string
+          club_id?: string
+          created_at?: string | null
+          duration_minutes?: number | null
+          id?: string
+          log_date?: string
+          notes?: string | null
+          rpe_score?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rpe_logs_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rpe_logs_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sleep_logs: {
         Row: {
           athlete_id: string
+          bedtime: string | null
           club_id: string
           created_at: string | null
           duration_hours: number | null
           id: string
+          notes: string | null
+          quality_rating: number | null
           sleep_date: string
-          sleep_quality: string | null
+          updated_at: string | null
+          wake_time: string | null
         }
         Insert: {
           athlete_id: string
+          bedtime?: string | null
           club_id: string
           created_at?: string | null
           duration_hours?: number | null
           id?: string
+          notes?: string | null
+          quality_rating?: number | null
           sleep_date: string
-          sleep_quality?: string | null
+          updated_at?: string | null
+          wake_time?: string | null
         }
         Update: {
           athlete_id?: string
+          bedtime?: string | null
           club_id?: string
           created_at?: string | null
           duration_hours?: number | null
           id?: string
+          notes?: string | null
+          quality_rating?: number | null
           sleep_date?: string
-          sleep_quality?: string | null
+          updated_at?: string | null
+          wake_time?: string | null
         }
         Relationships: [
           {
@@ -347,25 +509,34 @@ export type Database = {
           athlete_id: string
           created_at: string | null
           id: string
+          notes: string | null
+          points_scored: number | null
           rank: number | null
           result: string | null
           tournament_id: string
+          updated_at: string | null
         }
         Insert: {
           athlete_id: string
           created_at?: string | null
           id?: string
+          notes?: string | null
+          points_scored?: number | null
           rank?: number | null
           result?: string | null
           tournament_id: string
+          updated_at?: string | null
         }
         Update: {
           athlete_id?: string
           created_at?: string | null
           id?: string
+          notes?: string | null
+          points_scored?: number | null
           rank?: number | null
           result?: string | null
           tournament_id?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -388,29 +559,35 @@ export type Database = {
         Row: {
           club_id: string | null
           created_at: string | null
+          description: string | null
           end_date: string | null
           id: string
           location: string | null
           name: string
           start_date: string | null
+          updated_at: string | null
         }
         Insert: {
           club_id?: string | null
           created_at?: string | null
+          description?: string | null
           end_date?: string | null
           id?: string
           location?: string | null
           name: string
           start_date?: string | null
+          updated_at?: string | null
         }
         Update: {
           club_id?: string | null
           created_at?: string | null
+          description?: string | null
           end_date?: string | null
           id?: string
           location?: string | null
           name?: string
           start_date?: string | null
+          updated_at?: string | null
         }
         Relationships: [
           {
