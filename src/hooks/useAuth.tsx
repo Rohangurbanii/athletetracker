@@ -72,16 +72,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchProfile = async (userId: string) => {
     try {
+      console.log('Fetching profile for user:', userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching profile:', error);
+        if (error.code === 'PGRST116') {
+          // No profile found - this should only happen for old accounts
+          console.log('No profile found for user, this may be an incomplete signup');
+        }
+        throw error;
+      }
+      console.log('Profile fetched successfully:', data);
       setProfile(data as Profile);
     } catch (error) {
       console.error('Error fetching profile:', error);
+      // If no profile found, user might need to complete signup
+      setProfile(null);
     } finally {
       setLoading(false);
     }
