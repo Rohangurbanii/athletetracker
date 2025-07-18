@@ -8,10 +8,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar, Clock, Star, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 export const LogSessionForm = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { profile } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     date: new Date().toISOString().split('T')[0],
@@ -32,16 +36,63 @@ export const LogSessionForm = () => {
     'Competition'
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Here you would normally save to the database
-    toast({
-      title: "Session logged successfully!",
-      description: "Your training session has been recorded.",
-    });
+    if (!profile) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please log in to record a session.",
+      });
+      return;
+    }
+
+    setIsLoading(true);
     
-    navigate('/practice');
+    try {
+      // Get the athlete record for this profile
+      const { data: athleteData, error: athleteError } = await supabase
+        .from('athletes')
+        .select('id')
+        .eq('profile_id', profile.id)
+        .single();
+
+      if (athleteError || !athleteData) {
+        throw new Error('Athlete record not found');
+      }
+
+      // Insert RPE log
+      const { error: rpeError } = await supabase
+        .from('rpe_logs')
+        .insert({
+          athlete_id: athleteData.id,
+          club_id: profile.club_id,
+          log_date: formData.date,
+          rpe_score: parseInt(formData.athleteRpe),
+          duration_minutes: parseInt(formData.duration),
+          activity_type: formData.type,
+          notes: `${formData.title}: ${formData.description}. Personal notes: ${formData.athleteNotes}`
+        });
+
+      if (rpeError) throw rpeError;
+
+      toast({
+        title: "Session logged successfully!",
+        description: "Your training session has been recorded.",
+      });
+      
+      navigate('/practice');
+    } catch (error: any) {
+      console.error('Error logging session:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to log session. Please try again.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -191,9 +242,13 @@ export const LogSessionForm = () => {
 
             {/* Submit */}
             <div className="flex space-x-3">
-              <Button type="submit" className="gradient-primary text-primary-foreground flex-1">
+              <Button 
+                type="submit" 
+                className="gradient-primary text-primary-foreground flex-1"
+                disabled={isLoading}
+              >
                 <Clock className="h-4 w-4 mr-2" />
-                Log Session
+                {isLoading ? 'Logging...' : 'Log Session'}
               </Button>
               <Button type="button" variant="outline" onClick={() => navigate('/dashboard')}>
                 Cancel

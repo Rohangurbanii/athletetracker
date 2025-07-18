@@ -7,10 +7,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Target, ArrowLeft, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 export const SetGoalForm = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { profile } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -27,16 +31,63 @@ export const SetGoalForm = () => {
     'Recovery & Wellness'
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Here you would normally save to the database
-    toast({
-      title: "Goal set successfully!",
-      description: "Your new goal has been added to your progress tracker.",
-    });
+    if (!profile) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please log in to set a goal.",
+      });
+      return;
+    }
+
+    setIsLoading(true);
     
-    navigate('/progress');
+    try {
+      // Get the athlete record for this profile
+      const { data: athleteData, error: athleteError } = await supabase
+        .from('athletes')
+        .select('id')
+        .eq('profile_id', profile.id)
+        .single();
+
+      if (athleteError || !athleteData) {
+        throw new Error('Athlete record not found');
+      }
+
+      // Insert goal
+      const { error: goalError } = await supabase
+        .from('goals')
+        .insert({
+          athlete_id: athleteData.id,
+          title: formData.title,
+          description: `${formData.description}\n\nCategory: ${formData.category}`,
+          target_date: formData.targetDate,
+          status: 'active',
+          priority: 'medium',
+          progress_percentage: 0
+        });
+
+      if (goalError) throw goalError;
+
+      toast({
+        title: "Goal set successfully!",
+        description: "Your new goal has been added to your progress tracker.",
+      });
+      
+      navigate('/progress');
+    } catch (error: any) {
+      console.error('Error setting goal:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to set goal. Please try again.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -181,10 +232,10 @@ export const SetGoalForm = () => {
               <Button 
                 type="submit" 
                 className="gradient-primary text-primary-foreground flex-1"
-                disabled={!formData.title || !formData.description || !formData.targetDate || !formData.category}
+                disabled={!formData.title || !formData.description || !formData.targetDate || !formData.category || isLoading}
               >
                 <Target className="h-4 w-4 mr-2" />
-                Create Goal
+                {isLoading ? 'Creating...' : 'Create Goal'}
               </Button>
               <Button type="button" variant="outline" onClick={() => navigate('/dashboard')}>
                 Cancel

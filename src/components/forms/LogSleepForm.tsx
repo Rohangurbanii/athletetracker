@@ -8,10 +8,14 @@ import { Slider } from '@/components/ui/slider';
 import { Moon, Star, ArrowLeft, Activity } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 export const LogSleepForm = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { profile } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     bedtime: '',
@@ -24,29 +28,79 @@ export const LogSleepForm = () => {
   const qualityLabels = ['Very Poor', 'Poor', 'Fair', 'Good', 'Excellent'];
   const recoveryLabels = ['Poor Recovery', 'Low Recovery', 'Moderate Recovery', 'Good Recovery', 'Full Recovery'];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Calculate sleep duration
-    const bedtimeDate = new Date(`${formData.date}T${formData.bedtime}`);
-    const wakeDate = new Date(`${formData.date}T${formData.wakeTime}`);
-    
-    // If wake time is earlier than bedtime, assume it's the next day
-    if (wakeDate < bedtimeDate) {
-      wakeDate.setDate(wakeDate.getDate() + 1);
+    if (!profile) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please log in to record sleep data.",
+      });
+      return;
     }
+
+    setIsLoading(true);
     
-    const durationMs = wakeDate.getTime() - bedtimeDate.getTime();
-    const hours = Math.floor(durationMs / (1000 * 60 * 60));
-    const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
-    
-    // Here you would normally save to the database
-    toast({
-      title: "Sleep logged successfully!",
-      description: `${hours}h ${minutes}m of sleep recorded.`,
-    });
-    
-    navigate('/sleep');
+    try {
+      // Get the athlete record for this profile
+      const { data: athleteData, error: athleteError } = await supabase
+        .from('athletes')
+        .select('id')
+        .eq('profile_id', profile.id)
+        .single();
+
+      if (athleteError || !athleteData) {
+        throw new Error('Athlete record not found');
+      }
+
+      // Calculate sleep duration
+      const bedtimeDate = new Date(`${formData.date}T${formData.bedtime}`);
+      const wakeDate = new Date(`${formData.date}T${formData.wakeTime}`);
+      
+      // If wake time is earlier than bedtime, assume it's the next day
+      if (wakeDate < bedtimeDate) {
+        wakeDate.setDate(wakeDate.getDate() + 1);
+      }
+      
+      const durationMs = wakeDate.getTime() - bedtimeDate.getTime();
+      const hours = durationMs / (1000 * 60 * 60);
+
+      // Insert sleep log
+      const { error: sleepError } = await supabase
+        .from('sleep_logs')
+        .insert({
+          athlete_id: athleteData.id,
+          club_id: profile.club_id,
+          sleep_date: formData.date,
+          bedtime: formData.bedtime,
+          wake_time: formData.wakeTime,
+          duration_hours: hours,
+          quality_rating: formData.quality,
+          notes: formData.notes
+        });
+
+      if (sleepError) throw sleepError;
+
+      const durationHours = Math.floor(hours);
+      const durationMinutes = Math.floor((hours % 1) * 60);
+      
+      toast({
+        title: "Sleep logged successfully!",
+        description: `${durationHours}h ${durationMinutes}m of sleep recorded.`,
+      });
+      
+      navigate('/sleep');
+    } catch (error: any) {
+      console.error('Error logging sleep:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to log sleep. Please try again.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleInputChange = (field: string, value: string | number) => {
@@ -224,10 +278,10 @@ export const LogSleepForm = () => {
               <Button 
                 type="submit" 
                 className="gradient-primary text-primary-foreground flex-1"
-                disabled={!formData.bedtime || !formData.wakeTime}
+                disabled={!formData.bedtime || !formData.wakeTime || isLoading}
               >
                 <Moon className="h-4 w-4 mr-2" />
-                Log Sleep
+                {isLoading ? 'Logging...' : 'Log Sleep'}
               </Button>
               <Button type="button" variant="outline" onClick={() => navigate('/dashboard')}>
                 Cancel

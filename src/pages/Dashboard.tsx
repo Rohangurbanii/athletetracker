@@ -4,10 +4,19 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Trophy, Moon, Target, Activity, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export const Dashboard = () => {
   const { profile, loading } = useAuth();
   const navigate = useNavigate();
+  const [analytics, setAnalytics] = useState({
+    weekSessions: 0,
+    avgRPE: 0,
+    recentSleepHours: 0,
+    recentSleepQuality: 0
+  });
+  const [recentActivity, setRecentActivity] = useState([]);
 
   console.log('Dashboard profile:', profile, 'loading:', loading);
   
@@ -27,6 +36,88 @@ export const Dashboard = () => {
       </div>
     );
   }
+
+  // Fetch analytics data
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        // Get the athlete record for this profile
+        const { data: athleteData, error: athleteError } = await supabase
+          .from('athletes')
+          .select('id')
+          .eq('profile_id', profile.id)
+          .single();
+
+        if (athleteError || !athleteData) {
+          console.error('Athlete record not found:', athleteError);
+          return;
+        }
+
+        // Get this week's sessions
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        const { data: sessionsData } = await supabase
+          .from('rpe_logs')
+          .select('rpe_score, duration_minutes, activity_type, log_date')
+          .eq('athlete_id', athleteData.id)
+          .gte('log_date', weekAgo.toISOString().split('T')[0])
+          .order('log_date', { ascending: false });
+
+        // Get recent sleep data
+        const { data: sleepData } = await supabase
+          .from('sleep_logs')
+          .select('duration_hours, quality_rating, sleep_date')
+          .eq('athlete_id', athleteData.id)
+          .order('sleep_date', { ascending: false })
+          .limit(7);
+
+        // Calculate analytics
+        const weekSessionsCount = sessionsData?.length || 0;
+        const avgRPE = sessionsData?.length 
+          ? sessionsData.reduce((sum, session) => sum + (session.rpe_score || 0), 0) / sessionsData.length 
+          : 0;
+        
+        const recentSleep = sleepData?.[0];
+        const avgSleepHours = sleepData?.length 
+          ? sleepData.reduce((sum, sleep) => sum + (sleep.duration_hours || 0), 0) / sleepData.length 
+          : 0;
+
+        setAnalytics({
+          weekSessions: weekSessionsCount,
+          avgRPE: Math.round(avgRPE * 10) / 10,
+          recentSleepHours: Math.round(avgSleepHours * 10) / 10,
+          recentSleepQuality: recentSleep?.quality_rating || 0
+        });
+
+        // Set recent activity
+        const recentActivities = [];
+        if (sessionsData?.length > 0) {
+          recentActivities.push({
+            type: 'session',
+            activity: `Completed ${sessionsData[0].activity_type?.toLowerCase() || 'training'} session`,
+            time: `${Math.abs(new Date().getTime() - new Date(sessionsData[0].log_date).getTime()) / (1000 * 60 * 60)} hours ago`,
+            rpe: sessionsData[0].rpe_score
+          });
+        }
+        if (recentSleep) {
+          recentActivities.push({
+            type: 'sleep',
+            activity: `Logged ${Math.floor(recentSleep.duration_hours)}h ${Math.floor((recentSleep.duration_hours % 1) * 60)}m of sleep`,
+            time: new Date(recentSleep.sleep_date).toLocaleDateString() === new Date().toLocaleDateString() ? 'Today' : 'Yesterday',
+            quality: recentSleep.quality_rating
+          });
+        }
+        setRecentActivity(recentActivities);
+
+      } catch (error) {
+        console.error('Error fetching analytics:', error);
+      }
+    };
+
+    if (profile) {
+      fetchAnalytics();
+    }
+  }, [profile]);
 
   const isCoach = profile.role === 'coach';
 
@@ -52,7 +143,7 @@ export const Dashboard = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">This Week</p>
-                <p className="text-xl font-bold">12 Sessions</p>
+                <p className="text-xl font-bold">{analytics.weekSessions} Sessions</p>
               </div>
             </div>
           </CardContent>
@@ -66,7 +157,7 @@ export const Dashboard = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Avg RPE</p>
-                <p className="text-xl font-bold">7.2</p>
+                <p className="text-xl font-bold">{analytics.avgRPE || 'N/A'}</p>
               </div>
             </div>
           </CardContent>
@@ -147,27 +238,31 @@ export const Dashboard = () => {
           <CardTitle>Recent Activity</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex items-center space-x-3 p-3 bg-card/50 rounded-lg border border-border/50">
-            <div className="gradient-primary p-2 rounded-full">
-              <Activity className="h-4 w-4 text-primary-foreground" />
+          {recentActivity.length > 0 ? (
+            recentActivity.map((activity, index) => (
+              <div key={index} className="flex items-center space-x-3 p-3 bg-card/50 rounded-lg border border-border/50">
+                <div className={`gradient-${activity.type === 'session' ? 'primary' : 'secondary'} p-2 rounded-full`}>
+                  {activity.type === 'session' ? (
+                    <Activity className="h-4 w-4 text-primary-foreground" />
+                  ) : (
+                    <Moon className="h-4 w-4 text-accent-foreground" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium">{activity.activity}</p>
+                  <p className="text-sm text-muted-foreground">{activity.time}</p>
+                </div>
+                <Badge variant="outline">
+                  {activity.type === 'session' ? `RPE ${activity.rpe}` : `Quality: ${activity.quality}/5`}
+                </Badge>
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">No recent activity</p>
+              <p className="text-sm text-muted-foreground">Start logging sessions and sleep to see your activity here</p>
             </div>
-            <div className="flex-1">
-              <p className="font-medium">Completed endurance training</p>
-              <p className="text-sm text-muted-foreground">2 hours ago</p>
-            </div>
-            <Badge variant="outline">RPE 8</Badge>
-          </div>
-          
-          <div className="flex items-center space-x-3 p-3 bg-card/50 rounded-lg border border-border/50">
-            <div className="gradient-secondary p-2 rounded-full">
-              <Moon className="h-4 w-4 text-accent-foreground" />
-            </div>
-            <div className="flex-1">
-              <p className="font-medium">Logged 8.5 hours of sleep</p>
-              <p className="text-sm text-muted-foreground">Yesterday</p>
-            </div>
-            <Badge variant="outline">Quality: 4/5</Badge>
-          </div>
+          )}
         </CardContent>
       </Card>
     </div>
