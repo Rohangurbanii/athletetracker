@@ -4,15 +4,28 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Calendar, Trophy, Moon, Target, Activity, TrendingUp, Users, ChevronDown, Plus } from 'lucide-react';
+import { Calendar, Trophy, Moon, Target, Activity, TrendingUp, Users, ChevronDown, Plus, Edit, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { CreateBatchForm } from '@/components/forms/CreateBatchForm';
+import { EditBatchForm } from '@/components/forms/EditBatchForm';
+import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const Dashboard = () => {
   const { profile, loading } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [analytics, setAnalytics] = useState({
     weekSessions: 0,
     avgRPE: 0,
@@ -22,6 +35,10 @@ export const Dashboard = () => {
   const [recentActivity, setRecentActivity] = useState([]);
   const [batches, setBatches] = useState([]);
   const [showCreateBatch, setShowCreateBatch] = useState(false);
+  const [showEditBatch, setShowEditBatch] = useState(false);
+  const [selectedBatch, setSelectedBatch] = useState(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [batchToDelete, setBatchToDelete] = useState(null);
 
   const fetchData = useCallback(async () => {
     if (!profile) return; // Guard clause inside useEffect instead
@@ -372,22 +389,46 @@ export const Dashboard = () => {
             {batches.length > 0 ? (
               <div className="space-y-4">
                 {batches.map((batch) => (
-                  <div key={batch.id} className="flex items-center justify-between p-4 bg-card/50 rounded-lg border border-border/50">
-                    <div className="space-y-1">
-                      <h3 className="font-semibold">{batch.name}</h3>
-                      {batch.description && (
-                        <p className="text-sm text-muted-foreground">{batch.description}</p>
-                      )}
+                  <div key={batch.id} className="p-4 bg-card/50 rounded-lg border border-border/50">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <h3 className="font-semibold">{batch.name}</h3>
+                        {batch.description && (
+                          <p className="text-sm text-muted-foreground">{batch.description}</p>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">
+                            {batch.batch_athletes?.length || 0} athletes
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            Created {new Date(batch.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline">
-                          {batch.batch_athletes?.length || 0} athletes
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">
-                          Created {new Date(batch.created_at).toLocaleDateString()}
-                        </span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedBatch(batch);
+                            setShowEditBatch(true);
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setBatchToDelete(batch);
+                            setShowDeleteDialog(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 mt-3">
                       {batch.batch_athletes?.slice(0, 3).map((ba, index) => (
                         <div key={index} className="text-xs bg-accent px-2 py-1 rounded">
                           {ba.athlete?.profile?.full_name || 'Unknown'}
@@ -432,6 +473,87 @@ export const Dashboard = () => {
           />
         </DialogContent>
       </Dialog>
+
+      {/* Edit Batch Dialog */}
+      <Dialog open={showEditBatch} onOpenChange={setShowEditBatch}>
+        <DialogContent className="max-w-2xl">
+          {selectedBatch && (
+            <EditBatchForm 
+              batch={selectedBatch}
+              onSuccess={() => {
+                setShowEditBatch(false);
+                setSelectedBatch(null);
+                fetchData();
+              }}
+              onCancel={() => {
+                setShowEditBatch(false);
+                setSelectedBatch(null);
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Batch Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Batch</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the batch "{batchToDelete?.name}"? 
+              This will remove all athlete assignments from this batch. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowDeleteDialog(false);
+              setBatchToDelete(null);
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!batchToDelete) return;
+                
+                try {
+                  // Delete all batch_athletes first
+                  await supabase
+                    .from('batch_athletes')
+                    .delete()
+                    .eq('batch_id', batchToDelete.id);
+                  
+                  // Then delete the batch
+                  const { error } = await supabase
+                    .from('batches')
+                    .delete()
+                    .eq('id', batchToDelete.id);
+                  
+                  if (error) throw error;
+                  
+                  toast({
+                    title: "Success",
+                    description: `Batch "${batchToDelete.name}" deleted successfully`,
+                  });
+                  
+                  setShowDeleteDialog(false);
+                  setBatchToDelete(null);
+                  fetchData();
+                } catch (error) {
+                  console.error('Error deleting batch:', error);
+                  toast({
+                    title: "Error",
+                    description: "Failed to delete batch",
+                    variant: "destructive",
+                  });
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Recent Activity */}
       <Card className="sport-card">
