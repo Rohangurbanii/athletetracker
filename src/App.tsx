@@ -36,8 +36,8 @@ const ProtectedRoutes = () => {
 
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="/" element={<MobileLayout />}>
+        <Route index element={<Dashboard />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="practice" element={<Practice />} />
         <Route path="sleep" element={<Sleep />} />
