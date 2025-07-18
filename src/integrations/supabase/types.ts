@@ -119,6 +119,57 @@ export type Database = {
           },
         ]
       }
+      batch_athletes: {
+        Row: {
+          assigned_at: string
+          athlete_id: string
+          batch_id: string
+          id: string
+        }
+        Insert: {
+          assigned_at?: string
+          athlete_id: string
+          batch_id: string
+          id?: string
+        }
+        Update: {
+          assigned_at?: string
+          athlete_id?: string
+          batch_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      batches: {
+        Row: {
+          club_id: string
+          coach_id: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          club_id: string
+          coach_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          club_id?: string
+          coach_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       clubs: {
         Row: {
           admin_id: string | null
