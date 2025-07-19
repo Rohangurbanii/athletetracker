@@ -394,6 +394,19 @@ export const Practice = () => {
                       <p className="text-sm">{session.notes}</p>
                     </div>
                   )}
+                  {/* Show Edit RPE button for completed scheduled sessions */}
+                  {profile?.role === 'athlete' && session.originalSession && (
+                    <div className="flex space-x-2 mt-3">
+                      <Button 
+                        variant="outline" 
+                        className="flex-1 bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/30"
+                        onClick={() => openRpeDialog(session)}
+                      >
+                        <Star className="h-4 w-4 mr-2" />
+                        Edit RPE
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ) : session.status === 'scheduled' ? (
                 <div>
