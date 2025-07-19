@@ -92,7 +92,8 @@ export const Practice = () => {
               // Find matching RPE log for this practice session
               const matchingRpe = (rpeData || []).find(log => 
                 log.activity_type === session.session_type && 
-                log.notes?.includes('scheduled practice')
+                log.notes?.includes('scheduled practice') &&
+                log.log_date === session.session_date
               );
 
               return {
@@ -104,7 +105,8 @@ export const Practice = () => {
                 status: matchingRpe ? 'completed' : 'scheduled',
                 notes: session.notes,
                 athleteRpe: matchingRpe?.rpe_score,
-                originalSession: session
+                originalSession: session,
+                rpeLogId: matchingRpe?.id // Store the RPE log ID for updates
               };
             });
 
@@ -205,13 +207,8 @@ export const Practice = () => {
         return;
       }
 
-      // Check if RPE log already exists for this scheduled practice
-      const existingRpe = rpeLogs.find(log => 
-        log.activity_type === selectedSession.originalSession?.session_type &&
-        log.notes?.includes('scheduled practice')
-      );
-
-      if (existingRpe) {
+      // Use the stored RPE log ID if this is an edit of an existing RPE
+      if (selectedSession.rpeLogId) {
         // Update existing RPE log
         const { error: updateError } = await supabase
           .from('rpe_logs')
@@ -219,9 +216,14 @@ export const Practice = () => {
             rpe_score: parseInt(selectedRpe),
             updated_at: new Date().toISOString()
           })
-          .eq('id', existingRpe.id);
+          .eq('id', selectedSession.rpeLogId);
 
         if (updateError) throw updateError;
+
+        toast({
+          title: "RPE updated successfully!",
+          description: "Your effort rating has been updated.",
+        });
       } else {
         // Create new RPE log for this practice session
         const { error: insertError } = await supabase
@@ -237,12 +239,12 @@ export const Practice = () => {
           });
 
         if (insertError) throw insertError;
-      }
 
-      toast({
-        title: existingRpe ? "RPE updated successfully!" : "RPE logged successfully!",
-        description: existingRpe ? "Your effort rating has been updated." : "Your effort rating has been recorded for this practice.",
-      });
+        toast({
+          title: "RPE logged successfully!",
+          description: "Your effort rating has been recorded for this practice.",
+        });
+      }
 
       setRpeDialogOpen(false);
       setSelectedSession(null);
