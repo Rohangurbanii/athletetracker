@@ -232,25 +232,53 @@ export const Practice = () => {
           description: "Your effort rating has been updated.",
         });
       } else {
-        // Create new RPE log for this practice session
-        const { error: insertError } = await supabase
+        // Before creating a new RPE log, check if one already exists for this practice
+        const existingRpeCheck = await supabase
           .from('rpe_logs')
-          .insert({
-            athlete_id: athleteData.id,
-            club_id: profile.club_id,
-            log_date: selectedDate,
-            rpe_score: parseInt(selectedRpe),
-            duration_minutes: selectedSession.originalSession?.duration_minutes || 0,
-            activity_type: selectedSession.originalSession?.session_type || 'Practice',
-            notes: `RPE for scheduled practice: ${selectedSession.originalSession?.notes || 'Practice session'}`
+          .select('id')
+          .eq('athlete_id', athleteData.id)
+          .eq('log_date', selectedDate)
+          .eq('activity_type', selectedSession.originalSession?.session_type || 'Practice')
+          .like('notes', '%scheduled practice%')
+          .maybeSingle();
+
+        if (existingRpeCheck.data) {
+          // Update the existing RPE log instead of creating a new one
+          const { error: updateError } = await supabase
+            .from('rpe_logs')
+            .update({
+              rpe_score: parseInt(selectedRpe),
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existingRpeCheck.data.id);
+
+          if (updateError) throw updateError;
+
+          toast({
+            title: "RPE updated successfully!",
+            description: "Your effort rating has been updated.",
           });
+        } else {
+          // Create new RPE log for this practice session
+          const { error: insertError } = await supabase
+            .from('rpe_logs')
+            .insert({
+              athlete_id: athleteData.id,
+              club_id: profile.club_id,
+              log_date: selectedDate,
+              rpe_score: parseInt(selectedRpe),
+              duration_minutes: selectedSession.originalSession?.duration_minutes || 0,
+              activity_type: selectedSession.originalSession?.session_type || 'Practice',
+              notes: `RPE for scheduled practice: ${selectedSession.originalSession?.notes || 'Practice session'}`
+            });
 
-        if (insertError) throw insertError;
+          if (insertError) throw insertError;
 
-        toast({
-          title: "RPE logged successfully!",
-          description: "Your effort rating has been recorded for this practice.",
-        });
+          toast({
+            title: "RPE logged successfully!",
+            description: "Your effort rating has been recorded for this practice.",
+          });
+        }
       }
 
       setRpeDialogOpen(false);
