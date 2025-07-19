@@ -86,8 +86,10 @@ export const Analytics = () => {
     try {
       if (targetAthleteId) {
         setCoachLoading(true);
+        console.log('Fetching analytics for target athlete:', targetAthleteId);
       } else {
         setLoading(true);
+        console.log('Fetching analytics for current user athlete');
       }
       
       // Get athlete data based on user role
@@ -99,9 +101,11 @@ export const Analytics = () => {
           .eq('profile_id', profile.id)
           .single();
         athleteId = athleteData?.id;
+        console.log('Current user athlete ID:', athleteId);
       }
 
       if (!athleteId) {
+        console.log('No athlete ID found, returning null data');
         if (targetAthleteId) {
           setAthleteAnalytics(null);
         } else {
@@ -109,6 +113,8 @@ export const Analytics = () => {
         }
         return;
       }
+
+      console.log('Fetching data for athlete ID:', athleteId);
 
       // Fetch sleep data with better error handling
       const { data: sleepData, error: sleepError } = await supabase
@@ -134,7 +140,9 @@ export const Analytics = () => {
         console.error('RPE data error:', rpeError);
       }
 
-      console.log('Fetched data for athlete:', athleteId, { sleepData, rpeData });
+      console.log('Raw fetched data for athlete:', athleteId);
+      console.log('Sleep data:', sleepData);
+      console.log('RPE data:', rpeData);
 
       // Calculate analytics with null checks
       const avgSleep = sleepData?.length ? 
