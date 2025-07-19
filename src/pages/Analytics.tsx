@@ -22,18 +22,23 @@ export const Analytics = () => {
   const fetchBatches = async () => {
     if (profile?.role !== 'coach') return;
     
-    const { data: coachData } = await supabase
+    console.log('Fetching batches for coach profile:', profile);
+    
+    const { data: coachData, error: coachError } = await supabase
       .from('coaches')
       .select('id')
       .eq('profile_id', profile.id)
       .single();
 
+    console.log('Coach data:', coachData, 'Error:', coachError);
+
     if (coachData) {
-      const { data: batchesData } = await supabase
+      const { data: batchesData, error: batchesError } = await supabase
         .from('batches')
         .select('*')
         .eq('coach_id', coachData.id);
       
+      console.log('Batches data:', batchesData, 'Error:', batchesError);
       setBatches(batchesData || []);
     }
   };
@@ -159,10 +164,13 @@ export const Analytics = () => {
   };
 
   useEffect(() => {
+    console.log('Profile changed:', profile);
     if (profile) {
       if (profile.role === 'coach') {
+        console.log('User is coach, fetching batches');
         fetchBatches();
       } else {
+        console.log('User is athlete, fetching analytics');
         fetchAnalytics();
       }
     }
