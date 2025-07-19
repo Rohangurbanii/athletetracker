@@ -95,7 +95,11 @@ export const Analytics = () => {
       }
 
       if (!athleteId) {
-        setAnalyticsData(null);
+        if (targetAthleteId) {
+          setAthleteAnalytics(null);
+        } else {
+          setAnalyticsData(null);
+        }
         return;
       }
 
@@ -208,8 +212,8 @@ export const Analytics = () => {
     );
   }
 
-  // Use athlete analytics for coaches, regular analytics for athletes
-  const displayData = profile?.role === 'coach' ? athleteAnalytics : analyticsData;
+  // Show analytics for athletes always, for coaches only when athlete is selected
+  const displayData = profile?.role === 'athlete' ? analyticsData : athleteAnalytics;
 
   return (
     <div className="mobile-container space-y-6 p-4">
