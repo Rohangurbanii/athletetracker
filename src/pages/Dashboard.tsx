@@ -33,6 +33,7 @@ export const Dashboard = () => {
     recentSleepQuality: 0
   });
   const [recentActivity, setRecentActivity] = useState([]);
+  const [todaysSchedule, setTodaysSchedule] = useState([]);
   const [batches, setBatches] = useState([]);
   const [showCreateBatch, setShowCreateBatch] = useState(false);
   const [showEditBatch, setShowEditBatch] = useState(false);
@@ -170,6 +171,19 @@ export const Dashboard = () => {
       }
       setRecentActivity(recentActivities);
 
+      // Get today's scheduled practice sessions for athletes
+      if (profile.role === 'athlete') {
+        const today = new Date().toISOString().split('T')[0];
+        const { data: todaysSessions } = await supabase
+          .from('practice_sessions')
+          .select('session_type, duration_minutes, notes, session_date')
+          .eq('athlete_id', athleteData.id)
+          .eq('session_date', today)
+          .order('created_at', { ascending: true });
+
+        setTodaysSchedule(todaysSessions || []);
+      }
+
     } catch (error) {
       console.error('Error fetching analytics:', error);
     }
@@ -252,21 +266,28 @@ export const Dashboard = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg border border-border/50">
-            <div>
-              <p className="font-medium">Morning Training</p>
-              <p className="text-sm text-muted-foreground">8:00 AM - 10:00 AM</p>
+          {todaysSchedule.length > 0 ? (
+            todaysSchedule.map((session, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-card/50 rounded-lg border border-border/50">
+                <div>
+                  <p className="font-medium">{session.session_type || 'Training Session'}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {session.duration_minutes ? `${session.duration_minutes} minutes` : 'Duration not specified'}
+                  </p>
+                  {session.notes && (
+                    <p className="text-xs text-muted-foreground mt-1">{session.notes}</p>
+                  )}
+                </div>
+                <Badge variant="outline">Scheduled</Badge>
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-8">
+              <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">No sessions scheduled for today</p>
+              <p className="text-sm text-muted-foreground">Check your practice schedule or coach announcements</p>
             </div>
-            <Badge variant="outline">Upcoming</Badge>
-          </div>
-          
-          <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg border border-border/50">
-            <div>
-              <p className="font-medium">Recovery Session</p>
-              <p className="text-sm text-muted-foreground">2:00 PM - 3:00 PM</p>
-            </div>
-            <Badge className="bg-accent">Active</Badge>
-          </div>
+          )}
         </CardContent>
       </Card>
 
