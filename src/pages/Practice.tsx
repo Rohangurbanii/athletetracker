@@ -207,6 +207,13 @@ export const Practice = () => {
         return;
       }
 
+      console.log('RPE Update - Session data:', {
+        selectedSession,
+        rpeLogId: selectedSession.rpeLogId,
+        selectedRpe,
+        hasRpeLogId: !!selectedSession.rpeLogId
+      });
+
       // Use the stored RPE log ID if this is an edit of an existing RPE
       if (selectedSession.rpeLogId) {
         // Update existing RPE log
