@@ -23,6 +23,7 @@ export const Practice = () => {
   const [rpeDialogOpen, setRpeDialogOpen] = useState(false);
   const [selectedSession, setSelectedSession] = useState(null);
   const [selectedRpe, setSelectedRpe] = useState('');
+  const [rpeLogs, setRpeLogs] = useState([]);
 
   const fetchSessions = async () => {
       if (!profile) return;
@@ -81,29 +82,45 @@ export const Practice = () => {
             console.error('Error fetching sessions:', { practiceError, rpeError, upcomingError });
             setSessions([]);
             setUpcomingPractices([]);
+            setRpeLogs([]);
           } else {
-            // Transform practice sessions to session format
-            const practiceTransformed = (practiceData || []).map(session => ({
-              id: `practice-${session.id}`,
-              title: session.notes?.split(':')[0] || 'Practice Session',
-              time: 'Scheduled',
-              duration: `${session.duration_minutes || 0} mins`,
-              type: session.session_type || 'Practice',
-              status: 'scheduled',
-              notes: session.notes
-            }));
+            // Store RPE logs for reference
+            setRpeLogs(rpeData || []);
 
-            // Transform RPE logs to session format
-            const rpeTransformed = (rpeData || []).map(log => ({
-              id: `rpe-${log.id}`,
-              title: log.activity_type || 'Training Session',
-              time: 'Logged',
-              duration: `${log.duration_minutes || 0} mins`,
-              type: log.activity_type || 'Training',
-              athleteRpe: log.rpe_score,
-              status: 'completed',
-              notes: log.notes
-            }));
+            // Transform practice sessions to session format with RPE info
+            const practiceTransformed = (practiceData || []).map(session => {
+              // Find matching RPE log for this practice session
+              const matchingRpe = (rpeData || []).find(log => 
+                log.activity_type === session.session_type && 
+                log.notes?.includes('scheduled practice')
+              );
+
+              return {
+                id: `practice-${session.id}`,
+                title: session.notes?.split(':')[0] || 'Practice Session',
+                time: 'Scheduled',
+                duration: `${session.duration_minutes || 0} mins`,
+                type: session.session_type || 'Practice',
+                status: matchingRpe ? 'completed' : 'scheduled',
+                notes: session.notes,
+                athleteRpe: matchingRpe?.rpe_score,
+                originalSession: session
+              };
+            });
+
+            // Transform standalone RPE logs (not linked to scheduled practices)
+            const standaloneRpe = (rpeData || [])
+              .filter(log => !log.notes?.includes('scheduled practice'))
+              .map(log => ({
+                id: `rpe-${log.id}`,
+                title: log.activity_type || 'Training Session',
+                time: 'Logged',
+                duration: `${log.duration_minutes || 0} mins`,
+                type: log.activity_type || 'Training',
+                athleteRpe: log.rpe_score,
+                status: 'completed',
+                notes: log.notes
+              }));
 
             // Transform upcoming practices
             const upcomingTransformed = (upcomingData || []).map(session => ({
@@ -117,7 +134,7 @@ export const Practice = () => {
             }));
 
             // Combine and sort sessions for selected date
-            const allSessions = [...practiceTransformed, ...rpeTransformed];
+            const allSessions = [...practiceTransformed, ...standaloneRpe];
             setSessions(allSessions);
             setUpcomingPractices(upcomingTransformed);
           }
@@ -188,24 +205,43 @@ export const Practice = () => {
         return;
       }
 
-      // Create RPE log for this practice session
-      const { error: rpeError } = await supabase
-        .from('rpe_logs')
-        .insert({
-          athlete_id: athleteData.id,
-          club_id: profile.club_id,
-          log_date: selectedDate,
-          rpe_score: parseInt(selectedRpe),
-          duration_minutes: selectedSession.duration_minutes || 0,
-          activity_type: selectedSession.session_type || 'Practice',
-          notes: `RPE for scheduled practice: ${selectedSession.notes || 'Practice session'}`
-        });
+      // Check if RPE log already exists for this scheduled practice
+      const existingRpe = rpeLogs.find(log => 
+        log.activity_type === selectedSession.originalSession?.session_type &&
+        log.notes?.includes('scheduled practice')
+      );
 
-      if (rpeError) throw rpeError;
+      if (existingRpe) {
+        // Update existing RPE log
+        const { error: updateError } = await supabase
+          .from('rpe_logs')
+          .update({
+            rpe_score: parseInt(selectedRpe),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingRpe.id);
+
+        if (updateError) throw updateError;
+      } else {
+        // Create new RPE log for this practice session
+        const { error: insertError } = await supabase
+          .from('rpe_logs')
+          .insert({
+            athlete_id: athleteData.id,
+            club_id: profile.club_id,
+            log_date: selectedDate,
+            rpe_score: parseInt(selectedRpe),
+            duration_minutes: selectedSession.originalSession?.duration_minutes || 0,
+            activity_type: selectedSession.originalSession?.session_type || 'Practice',
+            notes: `RPE for scheduled practice: ${selectedSession.originalSession?.notes || 'Practice session'}`
+          });
+
+        if (insertError) throw insertError;
+      }
 
       toast({
-        title: "RPE logged successfully!",
-        description: "Your effort rating has been recorded for this practice.",
+        title: existingRpe ? "RPE updated successfully!" : "RPE logged successfully!",
+        description: existingRpe ? "Your effort rating has been updated." : "Your effort rating has been recorded for this practice.",
       });
 
       setRpeDialogOpen(false);
@@ -226,6 +262,12 @@ export const Practice = () => {
 
   const openRpeDialog = (session) => {
     setSelectedSession(session);
+    // If session has an existing RPE, set it as the default value
+    if (session.athleteRpe) {
+      setSelectedRpe(session.athleteRpe.toString());
+    } else {
+      setSelectedRpe('');
+    }
     setRpeDialogOpen(true);
   };
 
