@@ -110,25 +110,35 @@ export const Analytics = () => {
         return;
       }
 
-      // Fetch sleep data
-      const { data: sleepData } = await supabase
+      // Fetch sleep data with better error handling
+      const { data: sleepData, error: sleepError } = await supabase
         .from('sleep_logs')
         .select('*')
         .eq('athlete_id', athleteId)
         .order('sleep_date', { ascending: false })
         .limit(30);
 
-      // Fetch RPE data
-      const { data: rpeData } = await supabase
+      if (sleepError) {
+        console.error('Sleep data error:', sleepError);
+      }
+
+      // Fetch RPE data with better error handling
+      const { data: rpeData, error: rpeError } = await supabase
         .from('rpe_logs')
         .select('*')
         .eq('athlete_id', athleteId)
         .order('log_date', { ascending: false })
         .limit(30);
 
-      // Calculate analytics
+      if (rpeError) {
+        console.error('RPE data error:', rpeError);
+      }
+
+      console.log('Fetched data for athlete:', athleteId, { sleepData, rpeData });
+
+      // Calculate analytics with null checks
       const avgSleep = sleepData?.length ? 
-        sleepData.reduce((sum, log) => sum + (Number(log.duration_hours) || 0), 0) / sleepData.length : 0;
+        sleepData.reduce((sum, log) => sum + (parseFloat(String(log.duration_hours)) || 0), 0) / sleepData.length : 0;
       
       const avgRPE = rpeData?.length ?
         rpeData.reduce((sum, log) => sum + (log.rpe_score || 0), 0) / rpeData.length : 0;
@@ -138,7 +148,7 @@ export const Analytics = () => {
 
       // Calculate trends (comparing latest vs previous day)
       const sleepTrend = sleepData?.length >= 2 ? 
-        (Number(sleepData[0]?.duration_hours) || 0) - (Number(sleepData[1]?.duration_hours) || 0) : 0;
+        (parseFloat(String(sleepData[0]?.duration_hours)) || 0) - (parseFloat(String(sleepData[1]?.duration_hours)) || 0) : 0;
       
       const rpeTrend = rpeData?.length >= 2 ?
         (rpeData[0]?.rpe_score || 0) - (rpeData[1]?.rpe_score || 0) : 0;
@@ -147,10 +157,12 @@ export const Analytics = () => {
         avgSleep: Number(avgSleep.toFixed(1)),
         avgRPE: Number(avgRPE.toFixed(1)),
         trainingLoad: Number(trainingLoad.toFixed(0)),
-        sleepTrend,
-        rpeTrend,
+        sleepTrend: Number(sleepTrend.toFixed(1)),
+        rpeTrend: Number(rpeTrend.toFixed(1)),
         totalSessions: rpeData?.length || 0
       };
+
+      console.log('Calculated analytics:', analyticsResult);
 
       if (targetAthleteId) {
         setAthleteAnalytics(analyticsResult);
@@ -168,6 +180,67 @@ export const Analytics = () => {
       }
     }
   };
+
+  // Set up real-time subscriptions for analytics updates
+  useEffect(() => {
+    if (!profile) return;
+
+    let sleepChannel: any;
+    let rpeChannel: any;
+
+    const setupRealTimeSubscriptions = () => {
+      // Subscribe to sleep_logs changes
+      sleepChannel = supabase
+        .channel('sleep-logs-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'sleep_logs'
+          },
+          (payload) => {
+            console.log('Sleep logs changed:', payload);
+            // Refresh analytics when sleep data changes
+            if (profile.role === 'athlete') {
+              fetchAnalytics();
+            } else if (selectedAthlete) {
+              fetchAnalytics(selectedAthlete);
+            }
+          }
+        )
+        .subscribe();
+
+      // Subscribe to rpe_logs changes
+      rpeChannel = supabase
+        .channel('rpe-logs-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'rpe_logs'
+          },
+          (payload) => {
+            console.log('RPE logs changed:', payload);
+            // Refresh analytics when RPE data changes
+            if (profile.role === 'athlete') {
+              fetchAnalytics();
+            } else if (selectedAthlete) {
+              fetchAnalytics(selectedAthlete);
+            }
+          }
+        )
+        .subscribe();
+    };
+
+    setupRealTimeSubscriptions();
+
+    return () => {
+      if (sleepChannel) supabase.removeChannel(sleepChannel);
+      if (rpeChannel) supabase.removeChannel(rpeChannel);
+    };
+  }, [profile, selectedAthlete]);
 
   useEffect(() => {
     if (profile) {
@@ -190,6 +263,8 @@ export const Analytics = () => {
   useEffect(() => {
     if (selectedAthlete) {
       fetchAnalytics(selectedAthlete);
+    } else {
+      setAthleteAnalytics(null);
     }
   }, [selectedAthlete]);
 
