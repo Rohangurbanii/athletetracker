@@ -17,12 +17,13 @@ export const Analytics = () => {
   const [athletes, setAthletes] = useState<any[]>([]);
   const [selectedAthlete, setSelectedAthlete] = useState<string>("");
   const [athleteAnalytics, setAthleteAnalytics] = useState<any>(null);
+  const [coachLoading, setCoachLoading] = useState(false);
 
   // Fetch batches for coaches
   const fetchBatches = async () => {
     if (profile?.role !== 'coach') return;
     
-    console.log('Fetching batches for coach profile:', profile);
+    setLoading(false); // Stop main loading for coaches
     
     const { data: coachData, error: coachError } = await supabase
       .from('coaches')
@@ -30,15 +31,12 @@ export const Analytics = () => {
       .eq('profile_id', profile.id)
       .single();
 
-    console.log('Coach data:', coachData, 'Error:', coachError);
-
     if (coachData) {
       const { data: batchesData, error: batchesError } = await supabase
         .from('batches')
         .select('*')
         .eq('coach_id', coachData.id);
       
-      console.log('Batches data:', batchesData, 'Error:', batchesError);
       setBatches(batchesData || []);
     }
   };
@@ -86,7 +84,11 @@ export const Analytics = () => {
   // Fetch analytics for selected athlete (coaches) or current user (athletes)
   const fetchAnalytics = async (targetAthleteId?: string) => {
     try {
-      setLoading(true);
+      if (targetAthleteId) {
+        setCoachLoading(true);
+      } else {
+        setLoading(true);
+      }
       
       // Get athlete data based on user role
       let athleteId = targetAthleteId;
@@ -159,18 +161,19 @@ export const Analytics = () => {
     } catch (error) {
       console.error('Error fetching analytics:', error);
     } finally {
-      setLoading(false);
+      if (targetAthleteId) {
+        setCoachLoading(false);
+      } else {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
-    console.log('Profile changed:', profile);
     if (profile) {
       if (profile.role === 'coach') {
-        console.log('User is coach, fetching batches');
         fetchBatches();
       } else {
-        console.log('User is athlete, fetching analytics');
         fetchAnalytics();
       }
     }
@@ -270,6 +273,12 @@ export const Analytics = () => {
           {!selectedAthlete && (
             <div className="text-center py-8 text-muted-foreground">
               Select a batch and athlete to view analytics
+            </div>
+          )}
+
+          {coachLoading && selectedAthlete && (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin w-6 h-6 border-4 border-primary border-t-transparent rounded-full"></div>
             </div>
           )}
         </div>
