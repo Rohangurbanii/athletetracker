@@ -387,32 +387,34 @@ export const Dashboard = () => {
             )}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent>
           {isCoach ? (
-            // Coach: Show attendance data
-            attendanceData.length > 0 ? (
-              <div className="space-y-2">
-                {attendanceData.map((athlete, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-card/50 rounded-lg border border-border/50">
-                    <div>
-                      <p className="font-medium">{athlete.athlete_name}</p>
-                      {athlete.status === 'attended' && athlete.coach_rpe && (
-                        <p className="text-sm text-muted-foreground">Coach RPE: {athlete.coach_rpe}</p>
-                      )}
+            // Coach: Show attendance data with fixed height and scroll
+            <div className="h-64">
+              {attendanceData.length > 0 ? (
+                <div className="h-full overflow-y-auto space-y-2">
+                  {attendanceData.map((athlete, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-card/50 rounded-lg border border-border/50">
+                      <div>
+                        <p className="font-medium">{athlete.athlete_name}</p>
+                        {athlete.status === 'attended' && athlete.coach_rpe && (
+                          <p className="text-sm text-muted-foreground">Coach RPE: {athlete.coach_rpe}</p>
+                        )}
+                      </div>
+                      <Badge variant={athlete.status === 'attended' ? 'default' : 'secondary'}>
+                        {athlete.status === 'attended' ? 'Attended' : 'Absent'}
+                      </Badge>
                     </div>
-                    <Badge variant={athlete.status === 'attended' ? 'default' : 'secondary'}>
-                      {athlete.status === 'attended' ? 'Attended' : 'Absent'}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">No athletes found for selected date</p>
-                <p className="text-sm text-muted-foreground">Make sure you have athletes assigned to your batches</p>
-              </div>
-            )
+                  ))}
+                </div>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center">
+                  <Users className="h-12 w-12 text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">No athletes found for selected date</p>
+                  <p className="text-sm text-muted-foreground">Make sure you have athletes assigned to your batches</p>
+                </div>
+              )}
+            </div>
           ) : (
             // Athlete: Show today's schedule
             todaysSchedule.length > 0 ? (
