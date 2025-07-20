@@ -587,35 +587,53 @@ export type Database = {
       }
       tournament_results: {
         Row: {
+          areas_of_improvement: string | null
+          athlete_completed_at: string | null
           athlete_id: string
+          coach_comments: string | null
+          coach_completed_at: string | null
           created_at: string | null
           id: string
           notes: string | null
           points_scored: number | null
+          position: string | null
           rank: number | null
           result: string | null
+          strong_points: string | null
           tournament_id: string
           updated_at: string | null
         }
         Insert: {
+          areas_of_improvement?: string | null
+          athlete_completed_at?: string | null
           athlete_id: string
+          coach_comments?: string | null
+          coach_completed_at?: string | null
           created_at?: string | null
           id?: string
           notes?: string | null
           points_scored?: number | null
+          position?: string | null
           rank?: number | null
           result?: string | null
+          strong_points?: string | null
           tournament_id: string
           updated_at?: string | null
         }
         Update: {
+          areas_of_improvement?: string | null
+          athlete_completed_at?: string | null
           athlete_id?: string
+          coach_comments?: string | null
+          coach_completed_at?: string | null
           created_at?: string | null
           id?: string
           notes?: string | null
           points_scored?: number | null
+          position?: string | null
           rank?: number | null
           result?: string | null
+          strong_points?: string | null
           tournament_id?: string
           updated_at?: string | null
         }

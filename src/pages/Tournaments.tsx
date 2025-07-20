@@ -9,6 +9,8 @@ import type { Database } from '@/integrations/supabase/types';
 import { AddTournamentForm } from '@/components/forms/AddTournamentForm';
 import { ParticipationDropdown } from '@/components/forms/ParticipationDropdown';
 import { TournamentAthletesModal } from '@/components/forms/TournamentAthletesModal';
+import { TournamentResultsForm } from '@/components/forms/TournamentResultsForm';
+import { TournamentCommentsModal } from '@/components/forms/TournamentCommentsModal';
 
 type Tournament = Database['public']['Tables']['tournaments']['Row'];
 type TournamentResult = Database['public']['Tables']['tournament_results']['Row'] & {
@@ -29,6 +31,8 @@ export const Tournaments = () => {
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectedTournament, setSelectedTournament] = useState<{ id: string; name: string } | null>(null);
+  const [showResultsForm, setShowResultsForm] = useState<{ id: string; name: string } | null>(null);
+  const [showCommentsModal, setShowCommentsModal] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     fetchTournaments();
@@ -47,15 +51,69 @@ export const Tournaments = () => {
         .gte('start_date', new Date().toISOString().split('T')[0])
         .order('start_date', { ascending: true });
 
-      // Fetch completed tournaments with results for the current athlete
-      const { data: completedData } = await supabase
-        .from('tournament_results')
-        .select(`
-          *,
-          tournament:tournaments(*)
-        `)
-        .eq('athlete_id', profile.id)
-        .order('created_at', { ascending: false });
+      // Fetch completed tournaments with results for the current user
+      let completedData = [];
+      
+      if (isAthlete) {
+        // For athletes, get tournaments they have submitted results for
+        const { data: athleteData } = await supabase
+          .from('athletes')
+          .select('id')
+          .eq('profile_id', profile.id)
+          .single();
+
+        if (athleteData) {
+          const { data } = await supabase
+            .from('tournament_results')
+            .select(`
+              *,
+              tournament:tournaments(*)
+            `)
+            .eq('athlete_id', athleteData.id)
+            .not('athlete_completed_at', 'is', null)
+            .order('created_at', { ascending: false });
+          completedData = data || [];
+        }
+      } else if (isCoach) {
+        // For coaches, get tournaments they have completed commenting on
+        const { data: coachData } = await supabase
+          .from('coaches')
+          .select('id')
+          .eq('profile_id', profile.id)
+          .single();
+
+        if (coachData) {
+          // First get batch athlete IDs for this coach
+          const { data: batchData } = await supabase
+            .from('batches')
+            .select('id')
+            .eq('coach_id', coachData.id);
+
+          const batchIds = batchData?.map(b => b.id) || [];
+
+          const { data: batchAthleteData } = await supabase
+            .from('batch_athletes')
+            .select('athlete_id')
+            .in('batch_id', batchIds);
+
+          const athleteIds = batchAthleteData?.map(ba => ba.athlete_id) || [];
+
+          const { data } = await supabase
+            .from('tournament_results')
+            .select(`
+              tournament:tournaments(*),
+              coach_completed_at
+            `)
+            .not('coach_completed_at', 'is', null)
+            .in('athlete_id', athleteIds);
+          
+          // Get unique tournaments
+          const uniqueTournaments = Array.from(
+            new Map(data?.map(item => [item.tournament.id, item]) || []).values()
+          );
+          completedData = uniqueTournaments;
+        }
+      }
 
       setUpcomingTournaments(upcomingData || []);
       setCompletedTournaments(completedData || []);
@@ -189,10 +247,28 @@ export const Tournaments = () => {
                         Register
                       </Button>
                     )}
-                    <Button variant="outline">
-                      <Calendar className="h-4 w-4 mr-2" />
-                      Add to Calendar
-                    </Button>
+                    {isAthlete ? (
+                      <Button 
+                        variant="outline"
+                        onClick={() => setShowResultsForm({ id: tournament.id, name: tournament.name })}
+                      >
+                        <Trophy className="h-4 w-4 mr-2" />
+                        Results
+                      </Button>
+                    ) : isCoach ? (
+                      <Button 
+                        variant="outline"
+                        onClick={() => setShowCommentsModal({ id: tournament.id, name: tournament.name })}
+                      >
+                        <Star className="h-4 w-4 mr-2" />
+                        Comments
+                      </Button>
+                    ) : (
+                      <Button variant="outline">
+                        <Calendar className="h-4 w-4 mr-2" />
+                        Add to Calendar
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -253,14 +329,33 @@ export const Tournaments = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="stat-card">
-                      <p className="text-sm text-muted-foreground mb-2">Rank</p>
-                      <p className="text-sm font-semibold">{result.rank || 'N/A'}</p>
-                    </div>
-                    <div className="stat-card">
-                      <p className="text-sm text-muted-foreground mb-2">Result</p>
-                      <p className="text-sm">{result.result || 'No result recorded'}</p>
-                    </div>
+                    {result.position && (
+                      <div className="stat-card">
+                        <p className="text-sm text-muted-foreground mb-2">Position</p>
+                        <p className="text-sm font-semibold">{result.position}</p>
+                      </div>
+                    )}
+                    
+                    {result.strong_points && (
+                      <div className="stat-card">
+                        <p className="text-sm text-green-400 mb-2 font-semibold">Strong Points</p>
+                        <p className="text-sm">{result.strong_points}</p>
+                      </div>
+                    )}
+                    
+                    {result.areas_of_improvement && (
+                      <div className="stat-card">
+                        <p className="text-sm text-orange-400 mb-2 font-semibold">Areas of Improvement</p>
+                        <p className="text-sm">{result.areas_of_improvement}</p>
+                      </div>
+                    )}
+                    
+                    {result.coach_comments && (
+                      <div className="stat-card">
+                        <p className="text-sm text-blue-400 mb-2 font-semibold">Coach Comments</p>
+                        <p className="text-sm">{result.coach_comments}</p>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -308,6 +403,26 @@ export const Tournaments = () => {
           tournamentId={selectedTournament.id}
           tournamentName={selectedTournament.name}
           onClose={() => setSelectedTournament(null)}
+        />
+      )}
+
+      {/* Tournament Results Form */}
+      {showResultsForm && (
+        <TournamentResultsForm
+          tournamentId={showResultsForm.id}
+          tournamentName={showResultsForm.name}
+          onClose={() => setShowResultsForm(null)}
+          onResultSubmitted={fetchTournaments}
+        />
+      )}
+
+      {/* Tournament Comments Modal */}
+      {showCommentsModal && (
+        <TournamentCommentsModal
+          tournamentId={showCommentsModal.id}
+          tournamentName={showCommentsModal.name}
+          onClose={() => setShowCommentsModal(null)}
+          onCommentsCompleted={fetchTournaments}
         />
       )}
     </div>
