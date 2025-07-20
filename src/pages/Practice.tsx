@@ -323,10 +323,14 @@ export const Practice = () => {
   };
 
   const handleCoachRpeChange = (sessionId, athleteId, value) => {
-    setCoachRpeInputs(prev => ({
-      ...prev,
-      [`${sessionId}-${athleteId}`]: value
-    }));
+    // Only allow numbers 1-10
+    const numValue = parseInt(value);
+    if (value === '' || (numValue >= 1 && numValue <= 10)) {
+      setCoachRpeInputs(prev => ({
+        ...prev,
+        [`${sessionId}-${athleteId}`]: value
+      }));
+    }
   };
 
   const submitCoachRpe = async (session, athleteId) => {
