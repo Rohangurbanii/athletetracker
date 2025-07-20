@@ -109,24 +109,21 @@ export const Tournaments = () => {
           completedData = data || [];
         }
       } else if (isCoach) {
-        // For coaches, get tournaments where they have completed commenting on ALL athletes
+        // For coaches, get tournaments where they have completed commenting (simple approach like athletes)
         const { data: coachData } = await supabase
           .from('coaches')
           .select('id')
           .eq('profile_id', profile.id)
           .single();
 
-        console.log('Coach data:', coachData);
-
         if (coachData) {
-          // First get batch athlete IDs for this coach
+          // Get batch athlete IDs for this coach
           const { data: batchData } = await supabase
             .from('batches')
             .select('id')
             .eq('coach_id', coachData.id);
 
           const batchIds = batchData?.map(b => b.id) || [];
-          console.log('Batch IDs:', batchIds);
 
           const { data: batchAthleteData } = await supabase
             .from('batch_athletes')
@@ -134,64 +131,23 @@ export const Tournaments = () => {
             .in('batch_id', batchIds);
 
           const athleteIds = batchAthleteData?.map(ba => ba.athlete_id) || [];
-          console.log('Athlete IDs:', athleteIds);
 
-          // Get all tournament results for coach's athletes
-          const { data: allResults } = await supabase
+          // Simple approach: get tournaments where coach has completed at least one comment
+          const { data } = await supabase
             .from('tournament_results')
             .select(`
-              tournament_id,
-              coach_completed_at,
-              athlete_completed_at,
-              tournament:tournaments(*),
-              id,
-              position,
-              areas_of_improvement,
-              strong_points,
-              coach_comments
+              *,
+              tournament:tournaments(*)
             `)
-            .not('athlete_completed_at', 'is', null) // Only athletes who submitted results
-            .in('athlete_id', athleteIds);
+            .not('coach_completed_at', 'is', null)
+            .in('athlete_id', athleteIds)
+            .order('created_at', { ascending: false });
 
-          console.log('All results for coach athletes:', allResults);
-
-          // Group by tournament and check if ALL athletes have coach comments
-          const tournamentMap = new Map();
-          
-          allResults?.forEach(result => {
-            const tournamentId = result.tournament_id;
-            if (!tournamentMap.has(tournamentId)) {
-              tournamentMap.set(tournamentId, {
-                tournament: result.tournament,
-                total: 0,
-                completed: 0,
-                firstResult: result // Keep first result for structure
-              });
-            }
-            const tournament = tournamentMap.get(tournamentId);
-            tournament.total++;
-            if (result.coach_completed_at) {
-              tournament.completed++;
-            }
-          });
-
-          console.log('Tournament map:', Array.from(tournamentMap.entries()));
-
-          // Only include tournaments where ALL athletes have been commented on
-          // Return structure that matches what the rendering expects
-          completedData = Array.from(tournamentMap.values())
-            .filter(item => item.total > 0 && item.completed === item.total)
-            .map(item => ({
-              id: item.firstResult.id,
-              tournament: item.tournament,
-              position: null, // Coaches don't have individual positions
-              areas_of_improvement: null,
-              strong_points: null,
-              coach_comments: 'Completed commenting on all athletes',
-              result: 'Completed'
-            }));
-
-          console.log('Completed tournaments for coach:', completedData);
+          // Get unique tournaments (in case multiple athletes from same tournament)
+          const uniqueTournaments = Array.from(
+            new Map(data?.map(item => [item.tournament.id, item]) || []).values()
+          );
+          completedData = uniqueTournaments;
         }
       }
 
