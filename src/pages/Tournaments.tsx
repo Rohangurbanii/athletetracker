@@ -33,6 +33,7 @@ export const Tournaments = () => {
   const [selectedTournament, setSelectedTournament] = useState<{ id: string; name: string } | null>(null);
   const [showResultsForm, setShowResultsForm] = useState<{ id: string; name: string } | null>(null);
   const [showCommentsModal, setShowCommentsModal] = useState<{ id: string; name: string } | null>(null);
+  const [athleteResults, setAthleteResults] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     fetchTournaments();
@@ -50,6 +51,30 @@ export const Tournaments = () => {
         .select('*')
         .gte('start_date', new Date().toISOString().split('T')[0])
         .order('start_date', { ascending: true });
+
+      // If athlete, check which tournaments they have submitted results for
+      if (isAthlete && profile) {
+        const { data: athleteData } = await supabase
+          .from('athletes')
+          .select('id')
+          .eq('profile_id', profile.id)
+          .single();
+
+        if (athleteData) {
+          const { data: resultsData } = await supabase
+            .from('tournament_results')
+            .select('tournament_id')
+            .eq('athlete_id', athleteData.id)
+            .not('athlete_completed_at', 'is', null);
+
+          const resultsMap = (resultsData || []).reduce((acc, result) => {
+            acc[result.tournament_id] = true;
+            return acc;
+          }, {} as Record<string, boolean>);
+          
+          setAthleteResults(resultsMap);
+        }
+      }
 
       // Fetch completed tournaments with results for the current user
       let completedData = [];
@@ -246,16 +271,19 @@ export const Tournaments = () => {
                       <Button className="gradient-primary text-primary-foreground">
                         Register
                       </Button>
-                    )}
-                    {isAthlete ? (
-                      <Button 
-                        variant="outline"
-                        onClick={() => setShowResultsForm({ id: tournament.id, name: tournament.name })}
-                      >
-                        <Trophy className="h-4 w-4 mr-2" />
-                        Results
-                      </Button>
-                    ) : isCoach ? (
+                     )}
+                    {isAthlete && !athleteResults[tournament.id] && 
+                      new Date().toDateString() === new Date(tournament.start_date).toDateString() && (
+                        <Button 
+                          variant="outline"
+                          onClick={() => setShowResultsForm({ id: tournament.id, name: tournament.name })}
+                        >
+                          <Trophy className="h-4 w-4 mr-2" />
+                          Results
+                        </Button>
+                      )
+                    }
+                    {isCoach ? (
                       <Button 
                         variant="outline"
                         onClick={() => setShowCommentsModal({ id: tournament.id, name: tournament.name })}
@@ -354,6 +382,20 @@ export const Tournaments = () => {
                       <div className="stat-card">
                         <p className="text-sm text-blue-400 mb-2 font-semibold">Coach Comments</p>
                         <p className="text-sm">{result.coach_comments}</p>
+                      </div>
+                    )}
+                    
+                    {/* Edit Results Button for Athletes in Completed Tab */}
+                    {isAthlete && (
+                      <div className="pt-4 border-t">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setShowResultsForm({ id: result.tournament.id, name: result.tournament.name })}
+                        >
+                          <Trophy className="h-4 w-4 mr-2" />
+                          Edit Results
+                        </Button>
                       </div>
                     )}
                   </div>
