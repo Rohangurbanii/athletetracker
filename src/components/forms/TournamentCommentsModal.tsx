@@ -17,7 +17,7 @@ interface AthleteResult {
   areas_of_improvement?: string;
   strong_points?: string;
   coach_comments?: string;
-  athlete: {
+  athletes: {
     profile_id: string;
     profiles: {
       full_name: string;
@@ -89,7 +89,7 @@ export const TournamentCommentsModal = ({
           areas_of_improvement,
           strong_points,
           coach_comments,
-          athlete:athletes!inner(
+          athletes!inner(
             profile_id,
             profiles!inner(full_name)
           )
@@ -193,7 +193,7 @@ export const TournamentCommentsModal = ({
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">
-                      {result.athlete.profiles.full_name}
+                      {result.athletes.profiles.full_name}
                     </CardTitle>
                     {result.position && (
                       <Badge className="bg-yellow-500/20 text-yellow-400">
