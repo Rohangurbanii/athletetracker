@@ -164,7 +164,8 @@ export const Practice = () => {
               type: session.session_type || 'Practice',
               status: 'scheduled',
               notes: session.notes,
-              athlete: session.athletes?.profiles?.full_name || 'Athlete'
+              athlete: session.athletes?.profiles?.full_name || 'Athlete',
+              originalSession: session
             }));
 
             setSessions(coachTransformed);
