@@ -51,20 +51,26 @@ export const Progress = () => {
   // Fetch athletes in selected batch
   const fetchAthletes = async (batchId: string) => {
     try {
+      console.log('Fetching athletes for batch:', batchId);
+      
       // Get athletes in the selected batch
-      const { data: batchAthleteIds } = await supabase
+      const { data: batchAthleteIds, error: batchError } = await supabase
         .from('batch_athletes')
         .select('athlete_id')
         .eq('batch_id', batchId);
 
+      console.log('Batch athletes query result:', { batchAthleteIds, batchError });
+
       const athleteIds = (batchAthleteIds || []).map(ba => ba.athlete_id);
+      console.log('Athlete IDs from batch:', athleteIds);
       
       if (athleteIds.length === 0) {
+        console.log('No athletes found in this batch');
         setAthletes([]);
         return;
       }
 
-      const { data: athletes } = await supabase
+      const { data: athletes, error: athletesError } = await supabase
         .from('athletes')
         .select(`
           id,
@@ -75,12 +81,15 @@ export const Progress = () => {
         `)
         .in('id', athleteIds);
 
+      console.log('Athletes query result:', { athletes, athletesError });
+
       const athletesList = (athletes || []).map(athlete => ({
         id: athlete.id,
         profile_id: athlete.profiles?.id,
         name: athlete.profiles?.full_name || 'Unknown'
       }));
 
+      console.log('Processed athletes list:', athletesList);
       setAthletes(athletesList);
     } catch (error) {
       console.error('Error fetching batch athletes:', error);
@@ -248,6 +257,7 @@ export const Progress = () => {
 
   useEffect(() => {
     if (selectedBatch) {
+      console.log('Selected batch changed:', selectedBatch);
       fetchAthletes(selectedBatch);
       setSelectedAthlete("");
       setGoals([]);
@@ -257,6 +267,7 @@ export const Progress = () => {
 
   useEffect(() => {
     if (selectedAthlete) {
+      console.log('Selected athlete changed:', selectedAthlete);
       fetchGoals(selectedAthlete);
       if (activeTab === 'comments') {
         fetchCoachComments(selectedAthlete);
