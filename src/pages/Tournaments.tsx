@@ -6,11 +6,14 @@ import { Trophy, Calendar, MapPin, Plus, Star, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
-import { AddTournamentForm } from '@/components/forms/AddTournamentForm';
 import { ParticipationDropdown } from '@/components/forms/ParticipationDropdown';
-import { TournamentAthletesModal } from '@/components/forms/TournamentAthletesModal';
-import { TournamentResultsForm } from '@/components/forms/TournamentResultsForm';
-import { TournamentCommentsModal } from '@/components/forms/TournamentCommentsModal';
+// Dynamic imports for heavy modal components
+import { 
+  DynamicAddTournamentForm, 
+  DynamicTournamentResultsForm, 
+  DynamicTournamentCommentsModal, 
+  DynamicTournamentAthletesModal 
+} from '@/components/forms/DynamicForms';
 
 type Tournament = Database['public']['Tables']['tournaments']['Row'];
 type TournamentResult = Database['public']['Tables']['tournament_results']['Row'] & {
@@ -571,7 +574,7 @@ export const Tournaments = () => {
 
       {/* Add Tournament Form */}
       {showAddForm && (
-        <AddTournamentForm
+        <DynamicAddTournamentForm
           onClose={() => setShowAddForm(false)}
           onTournamentAdded={fetchTournaments}
         />
@@ -579,7 +582,7 @@ export const Tournaments = () => {
 
       {/* Tournament Athletes Modal */}
       {selectedTournament && (
-        <TournamentAthletesModal
+        <DynamicTournamentAthletesModal
           tournamentId={selectedTournament.id}
           tournamentName={selectedTournament.name}
           onClose={() => setSelectedTournament(null)}
@@ -588,7 +591,7 @@ export const Tournaments = () => {
 
       {/* Tournament Results Form */}
       {showResultsForm && (
-        <TournamentResultsForm
+        <DynamicTournamentResultsForm
           tournamentId={showResultsForm.id}
           tournamentName={showResultsForm.name}
           onClose={() => setShowResultsForm(null)}
@@ -598,7 +601,7 @@ export const Tournaments = () => {
 
       {/* Tournament Comments Modal */}
       {showCommentsModal && (
-        <TournamentCommentsModal
+        <DynamicTournamentCommentsModal
           tournamentId={showCommentsModal.id}
           tournamentName={showCommentsModal.name}
           onClose={() => setShowCommentsModal(null)}

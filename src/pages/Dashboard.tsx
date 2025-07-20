@@ -6,16 +6,16 @@ import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Calendar, Trophy, Moon, Target, Activity, TrendingUp, Users, ChevronDown, Plus, Edit, Trash2, BarChart3, CalendarDays } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { CreateBatchForm } from '@/components/forms/CreateBatchForm';
-import { EditBatchForm } from '@/components/forms/EditBatchForm';
 import { useToast } from '@/hooks/use-toast';
+// Dynamic imports for heavy components
+import { DynamicCreateBatchForm, DynamicEditBatchForm } from '@/components/forms/DynamicForms';
+import { DynamicCalendar } from '@/components/ui/DynamicCalendar';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -439,7 +439,7 @@ export const Dashboard = () => {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarComponent
+                  <DynamicCalendar
                     mode="single"
                     selected={selectedDate}
                     onSelect={setSelectedDate}
@@ -635,7 +635,7 @@ export const Dashboard = () => {
       {/* Create Batch Dialog */}
       <Dialog open={showCreateBatch} onOpenChange={setShowCreateBatch}>
         <DialogContent className="max-w-2xl">
-          <CreateBatchForm 
+          <DynamicCreateBatchForm 
             onSuccess={() => {
               setShowCreateBatch(false);
               // Refresh batches
@@ -650,7 +650,7 @@ export const Dashboard = () => {
       <Dialog open={showEditBatch} onOpenChange={setShowEditBatch}>
         <DialogContent className="max-w-2xl">
           {selectedBatch && (
-            <EditBatchForm 
+            <DynamicEditBatchForm 
               batch={selectedBatch}
               onSuccess={() => {
                 setShowEditBatch(false);
