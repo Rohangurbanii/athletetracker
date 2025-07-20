@@ -154,7 +154,18 @@ export const Practice = () => {
           if (coach) {
             const { data: coachPractices } = await supabase
               .from('practice_sessions')
-              .select('*, athletes!inner(id, profile_id, profiles!inner(full_name))')
+              .select(`
+                *, 
+                athletes!inner(
+                  id, 
+                  profile_id, 
+                  profiles!inner(full_name),
+                  batch_athletes!inner(
+                    batch_id,
+                    batches!inner(name)
+                  )
+                )
+              `)
               .eq('coach_id', coach.id)
               .eq('session_date', selectedDate)
               .order('created_at', { ascending: false });
@@ -193,7 +204,7 @@ export const Practice = () => {
                 type: session.session_type || 'Practice',
                 status: isCompleted ? 'completed' : 'scheduled',
                 notes: session.notes,
-                athlete: session.athletes?.profiles?.full_name || 'Unknown Athlete',
+                athlete: (session.athletes as any)?.batch_athletes?.[0]?.batches?.name || 'Unknown Batch',
                 originalSession: session,
                 existingCoachRpe: existingRpeLog?.coach_rpe || null,
                 athleteRpe: existingRpeLog?.rpe_score || null
