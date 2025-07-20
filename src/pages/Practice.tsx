@@ -152,6 +152,7 @@ export const Practice = () => {
             .maybeSingle();
 
           if (coach) {
+            // First get all practice sessions for this coach
             const { data: coachPractices, error: practicesError } = await supabase
               .from('practice_sessions')
               .select(`
@@ -160,8 +161,7 @@ export const Practice = () => {
                   id, 
                   profile_id, 
                   profiles!inner(full_name)
-                ),
-                batches(name)
+                )
               `)
               .eq('coach_id', coach.id)
               .eq('session_date', selectedDate)
@@ -169,6 +169,29 @@ export const Practice = () => {
 
             console.log('Coach practices query error:', practicesError);
             console.log('Coach practices fetched:', coachPractices);
+
+            // Get batch names separately for those that have batch_id
+            let batchNames = {};
+            if (coachPractices && coachPractices.length > 0) {
+              const batchIds = coachPractices
+                .filter(session => session.batch_id)
+                .map(session => session.batch_id);
+              
+              if (batchIds.length > 0) {
+                const { data: batchData } = await supabase
+                  .from('batches')
+                  .select('id, name')
+                  .in('id', batchIds)
+                  .eq('coach_id', coach.id);
+                
+                if (batchData) {
+                  batchNames = batchData.reduce((acc, batch) => {
+                    acc[batch.id] = batch.name;
+                    return acc;
+                  }, {});
+                }
+              }
+            }
 
             // Get existing RPE logs for these sessions (both athlete and coach RPE)
             const sessionAthleteIds = (coachPractices || []).map(session => session.athlete_id);
@@ -202,7 +225,7 @@ export const Practice = () => {
                 type: session.session_type || 'Practice',
                 status: isCompleted ? 'completed' : 'scheduled',
                 notes: session.notes,
-                athlete: (session.batches as any)?.name || (session.athletes as any)?.profiles?.full_name || 'Unknown',
+                athlete: batchNames[session.batch_id] || (session.athletes as any)?.profiles?.full_name || 'Unknown',
                 originalSession: session,
                 existingCoachRpe: existingRpeLog?.coach_rpe || null,
                 athleteRpe: existingRpeLog?.rpe_score || null
