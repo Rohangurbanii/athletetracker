@@ -74,7 +74,7 @@ export const Progress = () => {
         .from('athletes')
         .select(`
           id,
-          profiles!athletes_profile_id_fkey (
+          profiles (
             id,
             full_name
           )
