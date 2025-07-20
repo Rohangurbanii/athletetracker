@@ -558,6 +558,33 @@ export type Database = {
           },
         ]
       }
+      tournament_participation: {
+        Row: {
+          athlete_id: string
+          created_at: string | null
+          id: string
+          is_participating: boolean
+          tournament_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          athlete_id: string
+          created_at?: string | null
+          id?: string
+          is_participating: boolean
+          tournament_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          athlete_id?: string
+          created_at?: string | null
+          id?: string
+          is_participating?: boolean
+          tournament_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       tournament_results: {
         Row: {
           athlete_id: string

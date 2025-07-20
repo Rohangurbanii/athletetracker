@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Calendar, MapPin, Plus, Star } from 'lucide-react';
+import { Trophy, Calendar, MapPin, Plus, Star, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 import { AddTournamentForm } from '@/components/forms/AddTournamentForm';
+import { ParticipationDropdown } from '@/components/forms/ParticipationDropdown';
+import { TournamentAthletesModal } from '@/components/forms/TournamentAthletesModal';
 
 type Tournament = Database['public']['Tables']['tournaments']['Row'];
 type TournamentResult = Database['public']['Tables']['tournament_results']['Row'] & {
@@ -19,12 +21,14 @@ type CompletedTournament = TournamentResult;
 export const Tournaments = () => {
   const { profile } = useAuth();
   const isCoach = profile?.role === 'coach';
+  const isAthlete = profile?.role === 'athlete';
 
   const [activeTab, setActiveTab] = useState<'upcoming' | 'completed'>('upcoming');
   const [upcomingTournaments, setUpcomingTournaments] = useState<UpcomingTournament[]>([]);
   const [completedTournaments, setCompletedTournaments] = useState<CompletedTournament[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [selectedTournament, setSelectedTournament] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     fetchTournaments();
@@ -170,9 +174,21 @@ export const Tournaments = () => {
                     <p className="text-sm text-muted-foreground mb-4">Location: {tournament.location}</p>
                   )}
                   <div className="flex space-x-2">
-                    <Button className="gradient-primary text-primary-foreground">
-                      Register
-                    </Button>
+                    {isAthlete ? (
+                      <ParticipationDropdown tournamentId={tournament.id} />
+                    ) : isCoach ? (
+                      <Button 
+                        variant="outline"
+                        onClick={() => setSelectedTournament({ id: tournament.id, name: tournament.name })}
+                      >
+                        <Users className="h-4 w-4 mr-2" />
+                        Athletes
+                      </Button>
+                    ) : (
+                      <Button className="gradient-primary text-primary-foreground">
+                        Register
+                      </Button>
+                    )}
                     <Button variant="outline">
                       <Calendar className="h-4 w-4 mr-2" />
                       Add to Calendar
@@ -283,6 +299,15 @@ export const Tournaments = () => {
         <AddTournamentForm
           onClose={() => setShowAddForm(false)}
           onTournamentAdded={fetchTournaments}
+        />
+      )}
+
+      {/* Tournament Athletes Modal */}
+      {selectedTournament && (
+        <TournamentAthletesModal
+          tournamentId={selectedTournament.id}
+          tournamentName={selectedTournament.name}
+          onClose={() => setSelectedTournament(null)}
         />
       )}
     </div>
