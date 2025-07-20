@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TrendingUp, TrendingDown, Activity, Moon, Target, BarChart3, Calendar } from "lucide-react";
+import { TrendingUp, TrendingDown, Activity, Moon, Target, BarChart3, Calendar, Users, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -18,6 +18,7 @@ export const Analytics = () => {
   const [selectedAthlete, setSelectedAthlete] = useState<string>("");
   const [athleteAnalytics, setAthleteAnalytics] = useState<any>(null);
   const [coachLoading, setCoachLoading] = useState(false);
+  const [rpeComparisonData, setRpeComparisonData] = useState<any[]>([]);
 
   // Fetch batches for coaches
   const fetchBatches = async () => {
@@ -189,6 +190,43 @@ export const Analytics = () => {
     }
   };
 
+  // Fetch RPE comparison data for coaches
+  const fetchRpeComparison = async (athleteId: string) => {
+    if (profile?.role !== 'coach') return;
+    
+    try {
+      const { data: rpeData, error } = await supabase
+        .from('rpe_logs')
+        .select('log_date, activity_type, rpe_score, coach_rpe, notes, duration_minutes')
+        .eq('athlete_id', athleteId)
+        .order('log_date', { ascending: false })
+        .limit(10);
+
+      if (error) {
+        console.error('Error fetching RPE comparison:', error);
+        return;
+      }
+
+      // Filter to only show entries where we have both athlete and coach RPE
+      const comparisonData = (rpeData || [])
+        .filter(log => log.rpe_score && log.coach_rpe)
+        .map(log => ({
+          date: log.log_date,
+          activityType: log.activity_type,
+          athleteRpe: log.rpe_score,
+          coachRpe: log.coach_rpe,
+          difference: log.rpe_score - log.coach_rpe,
+          duration: log.duration_minutes,
+          notes: log.notes
+        }));
+
+      setRpeComparisonData(comparisonData);
+    } catch (error) {
+      console.error('Error fetching RPE comparison:', error);
+      setRpeComparisonData([]);
+    }
+  };
+
   // Set up real-time subscriptions for analytics updates
   useEffect(() => {
     if (!profile) return;
@@ -271,8 +309,10 @@ export const Analytics = () => {
   useEffect(() => {
     if (selectedAthlete) {
       fetchAnalytics(selectedAthlete);
+      fetchRpeComparison(selectedAthlete);
     } else {
       setAthleteAnalytics(null);
+      setRpeComparisonData([]);
     }
   }, [selectedAthlete]);
 
@@ -431,6 +471,78 @@ export const Analytics = () => {
               </div>
             </Card>
           </div>
+
+          {/* RPE Comparison Table for Coaches */}
+          {profile?.role === 'coach' && rpeComparisonData.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Users className="h-5 w-5" />
+                  <span>Coach vs Athlete RPE Comparison</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left p-3 text-sm font-medium text-muted-foreground">Date</th>
+                        <th className="text-left p-3 text-sm font-medium text-muted-foreground">Activity</th>
+                        <th className="text-center p-3 text-sm font-medium text-muted-foreground">Athlete RPE</th>
+                        <th className="text-center p-3 text-sm font-medium text-muted-foreground">Coach RPE</th>
+                        <th className="text-center p-3 text-sm font-medium text-muted-foreground">Difference</th>
+                        <th className="text-left p-3 text-sm font-medium text-muted-foreground">Duration</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rpeComparisonData.map((row, index) => (
+                        <tr key={index} className="border-b border-border/50 hover:bg-muted/30">
+                          <td className="p-3 text-sm">{new Date(row.date).toLocaleDateString()}</td>
+                          <td className="p-3 text-sm">
+                            <Badge variant="outline" className="text-xs">
+                              {row.activityType}
+                            </Badge>
+                          </td>
+                          <td className="p-3 text-center">
+                            <div className="flex items-center justify-center space-x-1">
+                              <Star className="h-3 w-3 text-blue-500" />
+                              <span className="text-sm font-medium">{row.athleteRpe}</span>
+                            </div>
+                          </td>
+                          <td className="p-3 text-center">
+                            <div className="flex items-center justify-center space-x-1">
+                              <Star className="h-3 w-3 text-orange-500" />
+                              <span className="text-sm font-medium">{row.coachRpe}</span>
+                            </div>
+                          </td>
+                          <td className="p-3 text-center">
+                            <div className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
+                              row.difference > 0 
+                                ? 'bg-red-500/20 text-red-400' 
+                                : row.difference < 0 
+                                ? 'bg-green-500/20 text-green-400'
+                                : 'bg-gray-500/20 text-gray-400'
+                            }`}>
+                              {row.difference > 0 ? '+' : ''}{row.difference}
+                            </div>
+                          </td>
+                          <td className="p-3 text-sm text-muted-foreground">{row.duration} min</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="mt-4 p-3 bg-muted/30 rounded-lg">
+                  <p className="text-xs text-muted-foreground">
+                    <strong>Legend:</strong> 
+                    <span className="ml-2">Positive difference = Athlete rated higher than coach</span>
+                    <span className="ml-2">•</span>
+                    <span className="ml-2">Negative difference = Coach rated higher than athlete</span>
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Summary Card */}
           <Card>
