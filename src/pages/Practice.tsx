@@ -161,27 +161,29 @@ export const Practice = () => {
 
             console.log('Coach practices fetched:', coachPractices);
 
-            // Get existing RPE logs for these sessions
+            // Get existing RPE logs for these sessions (both athlete and coach RPE)
             const sessionAthleteIds = (coachPractices || []).map(session => session.athlete_id);
             console.log('Session athlete IDs:', sessionAthleteIds);
             
             const { data: existingRpeLogs } = await supabase
               .from('rpe_logs')
-              .select('athlete_id, coach_rpe, log_date, activity_type')
+              .select('athlete_id, coach_rpe, rpe_score, log_date, activity_type')
               .in('athlete_id', sessionAthleteIds)
-              .eq('log_date', selectedDate)
-              .not('coach_rpe', 'is', null);
+              .eq('log_date', selectedDate);
 
-            console.log('Existing coach RPE logs:', existingRpeLogs);
+            console.log('Existing RPE logs:', existingRpeLogs);
 
             const coachTransformed = (coachPractices || []).map(session => {
-              const existingCoachRpe = existingRpeLogs?.find(log => 
+              const existingRpeLog = existingRpeLogs?.find(log => 
                 log.athlete_id === session.athlete_id && 
                 log.log_date === selectedDate &&
                 log.activity_type === session.session_type
               );
               
-              console.log(`Session ${session.id} - Athlete ${session.athlete_id} - Existing RPE:`, existingCoachRpe);
+              console.log(`Session ${session.id} - Athlete ${session.athlete_id} - Existing RPE:`, existingRpeLog);
+              
+              // Session is considered completed if either athlete or coach has filled RPE
+              const isCompleted = existingRpeLog && (existingRpeLog.rpe_score || existingRpeLog.coach_rpe);
               
               return {
                 id: `coach-${session.id}`,
@@ -189,11 +191,12 @@ export const Practice = () => {
                 time: 'Scheduled',
                 duration: `${session.duration_minutes || 0} mins`,
                 type: session.session_type || 'Practice',
-                status: 'scheduled',
+                status: isCompleted ? 'completed' : 'scheduled',
                 notes: session.notes,
                 athlete: session.athletes?.profiles?.full_name || 'Athlete',
                 originalSession: session,
-                existingCoachRpe: existingCoachRpe?.coach_rpe || null
+                existingCoachRpe: existingRpeLog?.coach_rpe || null,
+                athleteRpe: existingRpeLog?.rpe_score || null
               };
             });
 
@@ -532,15 +535,44 @@ export const Practice = () => {
               {session.status === 'completed' ? (
                 <div>
                   <div className="grid grid-cols-1 gap-4">
-                    <div className="stat-card">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Athlete RPE</span>
-                        <div className="flex items-center">
-                          <Star className="h-4 w-4 text-blue-500 mr-1" />
-                          <span className="font-semibold">{session.athleteRpe}/10</span>
+                    {/* Show Athlete RPE if exists */}
+                    {session.athleteRpe && (
+                      <div className="stat-card">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">Athlete RPE</span>
+                          <div className="flex items-center">
+                            <Star className="h-4 w-4 text-blue-500 mr-1" />
+                            <span className="font-semibold">{session.athleteRpe}/10</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
+                    
+                    {/* Show Coach RPE if exists (for coaches) */}
+                    {profile?.role === 'coach' && session.existingCoachRpe && (
+                      <div className="stat-card">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">Coach RPE</span>
+                          <div className="flex items-center">
+                            <Star className="h-4 w-4 text-green-500 mr-1" />
+                            <span className="font-semibold">{session.existingCoachRpe}/10</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* If no RPE shown yet, show placeholder */}
+                    {!session.athleteRpe && !(profile?.role === 'coach' && session.existingCoachRpe) && (
+                      <div className="stat-card">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">Session Attended</span>
+                          <div className="flex items-center">
+                            <div className="w-2 h-2 bg-green-500 rounded-full mr-2" />
+                            <span className="font-semibold text-green-500">Completed</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   {session.notes && (
                     <div className="stat-card mt-2">
@@ -548,6 +580,7 @@ export const Practice = () => {
                       <p className="text-sm">{session.notes}</p>
                     </div>
                   )}
+                  
                   {/* Show Edit RPE button for completed scheduled sessions */}
                   {profile?.role === 'athlete' && session.originalSession && (
                     <div className="flex space-x-2 mt-3">
@@ -557,8 +590,98 @@ export const Practice = () => {
                         onClick={() => openRpeDialog(session)}
                       >
                         <Star className="h-4 w-4 mr-2" />
-                        Edit RPE
+                        {session.athleteRpe ? 'Edit RPE' : 'Log RPE'}
                       </Button>
+                    </div>
+                  )}
+                  
+                  {/* Show coach actions for completed sessions */}
+                  {profile?.role === 'coach' && session.originalSession && (
+                    <div className="space-y-3 mt-3">
+                      <div className="flex items-center justify-between">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => toggleSessionExpansion(session.id)}
+                          className="flex items-center space-x-2 bg-muted/50 hover:bg-muted/70"
+                        >
+                          <Users className="h-4 w-4" />
+                          <span>Edit Coach RPE</span>
+                          <ChevronDown className={`h-4 w-4 transition-transform ${
+                            expandedSessions.has(session.id) ? 'rotate-180' : ''
+                          }`} />
+                        </Button>
+                      </div>
+                      
+                      {expandedSessions.has(session.id) && (
+                        <div className="space-y-2 p-3 bg-muted/30 rounded-lg border">
+                          <div className="flex items-center justify-between p-2 bg-card rounded-md">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-2 h-2 bg-primary rounded-full"></div>
+                              <span className="text-sm font-medium">{session.athlete}</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              {session.existingCoachRpe && !coachRpeInputs[`${session.id}-${session.originalSession.athlete_id}`] ? (
+                                <div className="flex items-center space-x-2">
+                                  <div className="bg-green-500/20 text-green-400 px-2 py-1 rounded text-sm font-medium">
+                                    RPE: {session.existingCoachRpe}
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 px-2 bg-primary/10 hover:bg-primary/20 border-primary/30"
+                                    onClick={() => {
+                                      setCoachRpeInputs(prev => ({
+                                        ...prev,
+                                        [`${session.id}-${session.originalSession.athlete_id}`]: session.existingCoachRpe.toString()
+                                      }));
+                                    }}
+                                  >
+                                    Edit
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center space-x-2">
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    max="10"
+                                    placeholder="RPE"
+                                    className="w-16 h-8 text-center bg-background"
+                                    value={coachRpeInputs[`${session.id}-${session.originalSession.athlete_id}`] || ''}
+                                    onChange={(e) => handleCoachRpeChange(session.id, session.originalSession.athlete_id, e.target.value)}
+                                  />
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 px-2 bg-primary/10 hover:bg-primary/20 border-primary/30"
+                                    onClick={() => submitCoachRpe(session, session.originalSession.athlete_id)}
+                                    disabled={!coachRpeInputs[`${session.id}-${session.originalSession.athlete_id}`]}
+                                  >
+                                    <Star className="h-3 w-3" />
+                                  </Button>
+                                  {session.existingCoachRpe && (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-8 px-2 text-muted-foreground"
+                                      onClick={() => {
+                                        setCoachRpeInputs(prev => {
+                                          const newInputs = { ...prev };
+                                          delete newInputs[`${session.id}-${session.originalSession.athlete_id}`];
+                                          return newInputs;
+                                        });
+                                      }}
+                                    >
+                                      Cancel
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
