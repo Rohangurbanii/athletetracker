@@ -1,4 +1,4 @@
-import { useState, useCallback, memo } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
-const LogSessionForm = memo(() => {
+export const LogSessionForm = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { profile } = useAuth();
@@ -36,7 +36,7 @@ const LogSessionForm = memo(() => {
     'Competition'
   ];
 
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!profile) {
@@ -101,11 +101,11 @@ const LogSessionForm = memo(() => {
     } finally {
       setIsLoading(false);
     }
-  }, [profile, formData, toast, navigate]);
+  };
 
-  const handleInputChange = useCallback((field: string, value: string) => {
+  const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-  }, []);
+  };
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
@@ -267,6 +267,6 @@ const LogSessionForm = memo(() => {
       </Card>
     </div>
   );
-});
+};
 
 export default LogSessionForm;

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, memo } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,7 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 
-const Progress = memo(() => {
+export const Progress = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
   const isCoach = profile?.role === 'coach';
@@ -26,7 +26,7 @@ const Progress = memo(() => {
   const [coachDataLoading, setCoachDataLoading] = useState(false);
 
   // Fetch batches for coaches
-  const fetchBatches = useCallback(async () => {
+  const fetchBatches = async () => {
     if (profile?.role !== 'coach') return;
     
     setLoading(false); // Stop main loading for coaches
@@ -45,10 +45,10 @@ const Progress = memo(() => {
       
       setBatches(batchesData || []);
     }
-  }, [profile]);
+  };
 
   // Fetch athletes in selected batch
-  const fetchAthletes = useCallback(async (batchId: string) => {
+  const fetchAthletes = async (batchId: string) => {
     try {
       console.log('Fetching athletes for batch:', batchId);
       
@@ -94,9 +94,9 @@ const Progress = memo(() => {
       console.error('Error fetching batch athletes:', error);
       setAthletes([]);
     }
-  }, []);
+  };
 
-  const fetchGoals = useCallback(async (targetAthleteId?: string) => {
+  const fetchGoals = async (targetAthleteId?: string) => {
     if (!profile) return;
 
     try {
@@ -181,9 +181,9 @@ const Progress = memo(() => {
         setLoading(false);
       }
     }
-  }, [profile]);
+  };
 
-  const fetchCoachComments = useCallback(async (targetAthleteId?: string) => {
+  const fetchCoachComments = async (targetAthleteId?: string) => {
     if (!profile || (isCoach && !targetAthleteId)) return; // Only load for athletes or coaches with selected athlete
 
     try {
@@ -241,7 +241,7 @@ const Progress = memo(() => {
     } finally {
       setCommentsLoading(false);
     }
-  }, [profile, isCoach]);
+  };
 
   // Effects and event handlers
   useEffect(() => {
@@ -287,15 +287,15 @@ const Progress = memo(() => {
     }
   }, [activeTab, selectedAthlete, isCoach]);
 
-  const getStatusIcon = useCallback((status: string) => {
+  const getStatusIcon = (status: string) => {
     return status === 'completed' ? (
       <CheckCircle className="h-4 w-4 text-green-500" />
     ) : (
       <Clock className="h-4 w-4 text-blue-500" />
     );
-  }, []);
+  };
 
-  const toggleCoachCompletion = useCallback(async (goalId: string, currentStatus: boolean) => {
+  const toggleCoachCompletion = async (goalId: string, currentStatus: boolean) => {
     try {
       const updateData = {
         coach_completed: !currentStatus,
@@ -331,9 +331,9 @@ const Progress = memo(() => {
     } catch (error) {
       console.error('Error toggling coach completion:', error);
     }
-  }, []);
+  };
 
-  const updateProgress = useCallback(async (goalId: string, newProgress: number) => {
+  const updateProgress = async (goalId: string, newProgress: number) => {
     try {
       const updateData = {
         progress_percentage: newProgress,
@@ -375,7 +375,7 @@ const Progress = memo(() => {
     } catch (error) {
       console.error('Error updating progress:', error);
     }
-  }, []);
+  };
 
   return (
     <div className="space-y-6">
@@ -703,6 +703,6 @@ const Progress = memo(() => {
       )}
     </div>
   );
-});
+};
 
 export default Progress;
