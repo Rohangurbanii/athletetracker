@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,7 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 
-export const Progress = () => {
+export const Progress = memo(() => {
   const { profile } = useAuth();
   const navigate = useNavigate();
   const isCoach = profile?.role === 'coach';
@@ -26,7 +26,7 @@ export const Progress = () => {
   const [coachDataLoading, setCoachDataLoading] = useState(false);
 
   // Fetch batches for coaches
-  const fetchBatches = async () => {
+  const fetchBatches = useCallback(async () => {
     if (profile?.role !== 'coach') return;
     
     setLoading(false); // Stop main loading for coaches
@@ -45,10 +45,10 @@ export const Progress = () => {
       
       setBatches(batchesData || []);
     }
-  };
+  }, [profile]);
 
   // Fetch athletes in selected batch
-  const fetchAthletes = async (batchId: string) => {
+  const fetchAthletes = useCallback(async (batchId: string) => {
     try {
       console.log('Fetching athletes for batch:', batchId);
       
@@ -94,9 +94,9 @@ export const Progress = () => {
       console.error('Error fetching batch athletes:', error);
       setAthletes([]);
     }
-  };
+  }, []);
 
-  const fetchGoals = async (targetAthleteId?: string) => {
+  const fetchGoals = useCallback(async (targetAthleteId?: string) => {
     if (!profile) return;
 
     try {
@@ -181,9 +181,9 @@ export const Progress = () => {
         setLoading(false);
       }
     }
-  };
+  }, [profile]);
 
-  const fetchCoachComments = async (targetAthleteId?: string) => {
+  const fetchCoachComments = useCallback(async (targetAthleteId?: string) => {
     if (!profile || (isCoach && !targetAthleteId)) return; // Only load for athletes or coaches with selected athlete
 
     try {
@@ -241,7 +241,7 @@ export const Progress = () => {
     } finally {
       setCommentsLoading(false);
     }
-  };
+  }, [profile, isCoach]);
 
   // Effects and event handlers
   useEffect(() => {
@@ -287,15 +287,15 @@ export const Progress = () => {
     }
   }, [activeTab, selectedAthlete, isCoach]);
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = useCallback((status: string) => {
     return status === 'completed' ? (
       <CheckCircle className="h-4 w-4 text-green-500" />
     ) : (
       <Clock className="h-4 w-4 text-blue-500" />
     );
-  };
+  }, []);
 
-  const toggleCoachCompletion = async (goalId: string, currentStatus: boolean) => {
+  const toggleCoachCompletion = useCallback(async (goalId: string, currentStatus: boolean) => {
     try {
       const updateData = {
         coach_completed: !currentStatus,
@@ -331,9 +331,9 @@ export const Progress = () => {
     } catch (error) {
       console.error('Error toggling coach completion:', error);
     }
-  };
+  }, []);
 
-  const updateProgress = async (goalId: string, newProgress: number) => {
+  const updateProgress = useCallback(async (goalId: string, newProgress: number) => {
     try {
       const updateData = {
         progress_percentage: newProgress,
@@ -375,7 +375,7 @@ export const Progress = () => {
     } catch (error) {
       console.error('Error updating progress:', error);
     }
-  };
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -703,6 +703,6 @@ export const Progress = () => {
       )}
     </div>
   );
-};
+});
 
 export default Progress;

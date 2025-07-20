@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Calendar, Trophy, Moon, Target, Activity, TrendingUp, Users, ChevronDown, Plus, Edit, Trash2, BarChart3, CalendarDays } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo, memo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { CreateBatchForm } from '@/components/forms/CreateBatchForm';
 import { EditBatchForm } from '@/components/forms/EditBatchForm';
@@ -27,7 +27,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-export const Dashboard = () => {
+export const Dashboard = memo(() => {
   const { profile, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -762,6 +762,6 @@ export const Dashboard = () => {
       </Card>
     </div>
   );
-};
+});
 
 export default Dashboard;

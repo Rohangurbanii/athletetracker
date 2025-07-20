@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo, memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -6,7 +6,7 @@ import { TrendingUp, TrendingDown, Activity, Moon, Target, BarChart3, Calendar, 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
-export const Analytics = () => {
+export const Analytics = memo(() => {
   const { profile } = useAuth();
   const [analyticsData, setAnalyticsData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -21,7 +21,7 @@ export const Analytics = () => {
   const [rpeComparisonData, setRpeComparisonData] = useState<any[]>([]);
 
   // Fetch batches for coaches
-  const fetchBatches = async () => {
+  const fetchBatches = useCallback(async () => {
     if (profile?.role !== 'coach') return;
     
     setLoading(false); // Stop main loading for coaches
@@ -40,10 +40,10 @@ export const Analytics = () => {
       
       setBatches(batchesData || []);
     }
-  };
+  }, [profile]);
 
   // Fetch athletes in selected batch
-  const fetchAthletes = async (batchId: string) => {
+  const fetchAthletes = useCallback(async (batchId: string) => {
     try {
       // Get athletes in the selected batch
       const { data: batchAthleteIds } = await supabase
@@ -80,10 +80,10 @@ export const Analytics = () => {
       console.error('Error fetching batch athletes:', error);
       setAthletes([]);
     }
-  };
+  }, []);
 
   // Fetch analytics for selected athlete (coaches) or current user (athletes)
-  const fetchAnalytics = async (targetAthleteId?: string) => {
+  const fetchAnalytics = useCallback(async (targetAthleteId?: string) => {
     try {
       if (targetAthleteId) {
         setCoachLoading(true);
@@ -188,10 +188,10 @@ export const Analytics = () => {
         setLoading(false);
       }
     }
-  };
+  }, [profile]);
 
   // Fetch RPE comparison data for both athletes and coaches
-  const fetchRpeComparison = async (athleteId?: string) => {
+  const fetchRpeComparison = useCallback(async (athleteId?: string) => {
     try {
       let targetAthleteId = athleteId;
       
@@ -240,7 +240,7 @@ export const Analytics = () => {
       console.error('Error fetching RPE comparison:', error);
       setRpeComparisonData([]);
     }
-  };
+  }, [profile]);
 
   // Set up real-time subscriptions for analytics updates
   useEffect(() => {
@@ -338,7 +338,7 @@ export const Analytics = () => {
     }
   }, [profile]);
 
-  const getInsight = (metric: string, value: number, trend: number) => {
+  const getInsight = useCallback((metric: string, value: number, trend: number) => {
     switch (metric) {
       case 'sleep':
         if (value >= 8) return { text: "Excellent sleep quality", variant: "default" as const };
@@ -358,7 +358,7 @@ export const Analytics = () => {
       default:
         return { text: "No data", variant: "outline" as const };
     }
-  };
+  }, []);
 
   if (loading) {
     return (
@@ -369,7 +369,10 @@ export const Analytics = () => {
   }
 
   // Show analytics for athletes always, for coaches only when athlete is selected
-  const displayData = profile?.role === 'athlete' ? analyticsData : athleteAnalytics;
+  const displayData = useMemo(() => 
+    profile?.role === 'athlete' ? analyticsData : athleteAnalytics,
+    [profile?.role, analyticsData, athleteAnalytics]
+  );
 
   return (
     <div className="mobile-container space-y-6 p-4">
@@ -597,6 +600,6 @@ export const Analytics = () => {
       )}
     </div>
   );
-};
+});
 
 export default Analytics;

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useMemo, memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
-export const SetGoalForm = () => {
+export const SetGoalForm = memo(() => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { profile } = useAuth();
@@ -31,7 +31,7 @@ export const SetGoalForm = () => {
     'Recovery & Wellness'
   ];
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!profile) {
@@ -88,15 +88,18 @@ export const SetGoalForm = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [profile, formData, toast, navigate]);
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = useCallback((field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-  };
+  }, []);
 
   // Calculate days until target
-  const daysUntilTarget = formData.targetDate ? 
-    Math.ceil((new Date(formData.targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0;
+  const daysUntilTarget = useMemo(() => 
+    formData.targetDate ? 
+      Math.ceil((new Date(formData.targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0,
+    [formData.targetDate]
+  );
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
@@ -290,6 +293,6 @@ export const SetGoalForm = () => {
       </Card>
     </div>
   );
-};
+});
 
 export default SetGoalForm;
