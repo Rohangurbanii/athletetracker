@@ -193,7 +193,7 @@ export const Practice = () => {
                 type: session.session_type || 'Practice',
                 status: isCompleted ? 'completed' : 'scheduled',
                 notes: session.notes,
-                athlete: session.athletes?.profiles?.full_name || 'Athlete',
+                athlete: "batch a",
                 originalSession: session,
                 existingCoachRpe: existingRpeLog?.coach_rpe || null,
                 athleteRpe: existingRpeLog?.rpe_score || null
@@ -555,25 +555,6 @@ export const Practice = () => {
                       </div>
                     )}
                     
-                    {/* Coach RPE */}
-                    {profile?.role === 'coach' && session.existingCoachRpe && (
-                      <div className="flex items-center justify-between p-3 bg-gradient-to-r from-green-500/10 to-green-600/10 rounded-lg border border-green-500/20">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-green-500/20 rounded-full flex items-center justify-center">
-                            <Star className="h-4 w-4 text-green-400" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-foreground">Coach RPE</p>
-                            <p className="text-sm text-muted-foreground">Coach assessment</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-2xl font-bold text-green-400">{session.existingCoachRpe}</div>
-                          <div className="text-sm text-muted-foreground">/10</div>
-                        </div>
-                      </div>
-                    )}
-                    
                     {/* Session Attended - when no RPE is shown */}
                     {!session.athleteRpe && !(profile?.role === 'coach' && session.existingCoachRpe) && (
                       <div className="flex items-center justify-between p-3 bg-gradient-to-r from-emerald-500/10 to-emerald-600/10 rounded-lg border border-emerald-500/20">
@@ -595,7 +576,7 @@ export const Practice = () => {
                   
                   {/* Session Notes */}
                   {session.notes && (
-                    <div className="p-3 bg-muted/30 rounded-lg border border-border/50">
+                    <div className="p-3 bg-muted/30 rounded-lg border border-border/50 space-y-3">
                       <div className="flex items-start space-x-2">
                         <div className="w-4 h-4 mt-0.5 text-muted-foreground">
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -606,9 +587,21 @@ export const Practice = () => {
                             <polyline points="10,9 9,9 8,9"/>
                           </svg>
                         </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-muted-foreground mb-1">Session Notes</p>
-                          <p className="text-sm text-foreground leading-relaxed">{session.notes}</p>
+                        <div className="flex-1 space-y-2">
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground mb-1">Session Notes</p>
+                            <p className="text-sm text-foreground leading-relaxed">
+                              {session.notes.split('Coach notes:')[0].replace(/^[^:]*:\s*/, '').trim()}
+                            </p>
+                          </div>
+                          {session.notes.includes('Coach notes:') && (
+                            <div>
+                              <p className="text-sm font-medium text-muted-foreground mb-1">Coach Notes</p>
+                              <p className="text-sm text-foreground leading-relaxed">
+                                {session.notes.split('Coach notes:')[1]?.trim()}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
