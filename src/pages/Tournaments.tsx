@@ -273,7 +273,7 @@ export const Tournaments = () => {
                       </Button>
                      )}
                     {isAthlete && !athleteResults[tournament.id] && 
-                      new Date().toDateString() === new Date(tournament.start_date).toDateString() && (
+                      new Date() > new Date(tournament.end_date || tournament.start_date) && (
                         <Button 
                           variant="outline"
                           onClick={() => setShowResultsForm({ id: tournament.id, name: tournament.name })}
