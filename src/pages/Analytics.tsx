@@ -190,15 +190,30 @@ export const Analytics = () => {
     }
   };
 
-  // Fetch RPE comparison data for coaches
-  const fetchRpeComparison = async (athleteId: string) => {
-    if (profile?.role !== 'coach') return;
-    
+  // Fetch RPE comparison data for both athletes and coaches
+  const fetchRpeComparison = async (athleteId?: string) => {
     try {
+      let targetAthleteId = athleteId;
+      
+      // If no athleteId provided and user is athlete, get their own athlete ID
+      if (!targetAthleteId && profile?.role === 'athlete') {
+        const { data: athleteData } = await supabase
+          .from('athletes')
+          .select('id')
+          .eq('profile_id', profile.id)
+          .single();
+        targetAthleteId = athleteData?.id;
+      }
+
+      if (!targetAthleteId) {
+        setRpeComparisonData([]);
+        return;
+      }
+
       const { data: rpeData, error } = await supabase
         .from('rpe_logs')
         .select('log_date, activity_type, rpe_score, coach_rpe, notes, duration_minutes')
-        .eq('athlete_id', athleteId)
+        .eq('athlete_id', targetAthleteId)
         .order('log_date', { ascending: false })
         .limit(10);
 
@@ -315,6 +330,13 @@ export const Analytics = () => {
       setRpeComparisonData([]);
     }
   }, [selectedAthlete]);
+
+  // Fetch RPE comparison for athletes on mount
+  useEffect(() => {
+    if (profile?.role === 'athlete') {
+      fetchRpeComparison();
+    }
+  }, [profile]);
 
   const getInsight = (metric: string, value: number, trend: number) => {
     switch (metric) {
@@ -472,8 +494,8 @@ export const Analytics = () => {
             </Card>
           </div>
 
-          {/* RPE Comparison Table for Coaches */}
-          {profile?.role === 'coach' && rpeComparisonData.length > 0 && (
+          {/* RPE Comparison Table for Athletes and Coaches */}
+          {rpeComparisonData.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
