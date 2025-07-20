@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar, Clock, Users, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -24,7 +25,7 @@ export const SchedulePracticeForm = () => {
     duration: '',
     type: '',
     description: '',
-    batchId: '',
+    selectedBatches: [],
     notes: ''
   });
 
@@ -80,11 +81,11 @@ export const SchedulePracticeForm = () => {
       return;
     }
 
-    if (!formData.batchId) {
+    if (!formData.selectedBatches || formData.selectedBatches.length === 0) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Please select a batch for this practice session.",
+        description: "Please select at least one batch for this practice session.",
       });
       return;
     }
@@ -103,37 +104,67 @@ export const SchedulePracticeForm = () => {
         throw new Error('Coach record not found');
       }
 
-      // Get athletes in the selected batch
+      // Get all athletes from selected batches and remove duplicates
       const { data: batchAthletes } = await supabase
         .from('batch_athletes')
-        .select('athlete_id')
-        .eq('batch_id', formData.batchId);
+        .select('athlete_id, batch_id')
+        .in('batch_id', formData.selectedBatches);
 
       if (!batchAthletes || batchAthletes.length === 0) {
-        throw new Error('No athletes found in the selected batch');
+        throw new Error('No athletes found in the selected batches');
       }
 
-      // Create practice sessions for each athlete in the batch
-      const practiceSessionsData = batchAthletes.map(({ athlete_id }) => ({
+      // Remove duplicate athletes (in case an athlete is in multiple selected batches)
+      const uniqueAthletes = batchAthletes.reduce((acc, curr) => {
+        if (!acc.find(item => item.athlete_id === curr.athlete_id)) {
+          acc.push(curr);
+        }
+        return acc;
+      }, []);
+
+      // Generate a session group ID to group all related sessions
+      const sessionGroupId = crypto.randomUUID();
+
+      // Create practice sessions for each unique athlete
+      const practiceSessionsData = uniqueAthletes.map(({ athlete_id }) => ({
         athlete_id,
         club_id: profile.club_id,
         coach_id: coach.id,
-        batch_id: formData.batchId, // Store the selected batch ID
+        batch_id: null, // No single batch ID since this is multi-batch
         session_date: formData.date,
         session_type: formData.type,
         duration_minutes: parseInt(formData.duration),
+        session_group_id: sessionGroupId,
         notes: `${formData.title}: ${formData.description}. Coach notes: ${formData.notes}`
       }));
 
-      const { error: practiceError } = await supabase
+      const { data: insertedSessions, error: practiceError } = await supabase
         .from('practice_sessions')
-        .insert(practiceSessionsData);
+        .insert(practiceSessionsData)
+        .select('id');
 
       if (practiceError) throw practiceError;
 
+      // Create session_batches entries to link this session group with all selected batches
+      const sessionBatchesData = [];
+      for (const sessionId of insertedSessions.map(s => s.id)) {
+        for (const batchId of formData.selectedBatches) {
+          sessionBatchesData.push({
+            session_id: sessionId,
+            batch_id: batchId
+          });
+        }
+      }
+
+      const { error: sessionBatchesError } = await supabase
+        .from('session_batches')
+        .insert(sessionBatchesData);
+
+      if (sessionBatchesError) throw sessionBatchesError;
+
       toast({
         title: "Practice scheduled successfully!",
-        description: `Practice session has been scheduled for ${batchAthletes.length} athletes.`,
+        description: `Practice session has been scheduled for ${uniqueAthletes.length} athletes across ${formData.selectedBatches.length} batch(es).`,
       });
       
       navigate('/dashboard');
@@ -151,6 +182,15 @@ export const SchedulePracticeForm = () => {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleBatchToggle = (batchId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      selectedBatches: prev.selectedBatches.includes(batchId)
+        ? prev.selectedBatches.filter(id => id !== batchId)
+        : [...prev.selectedBatches, batchId]
+    }));
   };
 
   return (
@@ -207,26 +247,39 @@ export const SchedulePracticeForm = () => {
             </div>
 
             {/* Batch Selection */}
-            <div className="space-y-2">
-              <Label htmlFor="batch">Select Batch</Label>
-              <Select value={formData.batchId} onValueChange={(value) => handleInputChange('batchId', value)}>
-                <SelectTrigger className="bg-background">
-                  <SelectValue placeholder="Choose a batch" />
-                </SelectTrigger>
-                <SelectContent>
-                  {batches.map((batch) => (
-                    <SelectItem key={batch.id} value={batch.id}>
-                      <div className="flex items-center space-x-2">
-                        <Users className="h-4 w-4" />
-                        <span>{batch.name}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="space-y-4">
+              <Label>Select Batches (can select multiple)</Label>
+              <div className="space-y-3 max-h-40 overflow-y-auto border rounded-lg p-3 bg-background">
+                {batches.map((batch) => (
+                  <div key={batch.id} className="flex items-center space-x-3">
+                    <Checkbox
+                      id={`batch-${batch.id}`}
+                      checked={formData.selectedBatches.includes(batch.id)}
+                      onCheckedChange={() => handleBatchToggle(batch.id)}
+                    />
+                    <Label
+                      htmlFor={`batch-${batch.id}`}
+                      className="flex items-center space-x-2 cursor-pointer flex-1"
+                    >
+                      <Users className="h-4 w-4" />
+                      <span>{batch.name}</span>
+                      {batch.description && (
+                        <span className="text-sm text-muted-foreground">
+                          - {batch.description}
+                        </span>
+                      )}
+                    </Label>
+                  </div>
+                ))}
+              </div>
               {batches.length === 0 && (
                 <p className="text-sm text-muted-foreground">
                   No batches found. Create a batch first to schedule practices.
+                </p>
+              )}
+              {formData.selectedBatches.length > 0 && (
+                <p className="text-sm text-primary">
+                  {formData.selectedBatches.length} batch(es) selected
                 </p>
               )}
             </div>
@@ -302,7 +355,7 @@ export const SchedulePracticeForm = () => {
               <Button 
                 type="submit" 
                 className="gradient-primary text-primary-foreground flex-1"
-                disabled={isLoading || batches.length === 0}
+                disabled={isLoading || batches.length === 0 || formData.selectedBatches.length === 0}
               >
                 <Clock className="h-4 w-4 mr-2" />
                 {isLoading ? 'Scheduling...' : 'Schedule Practice'}

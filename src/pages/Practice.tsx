@@ -152,7 +152,7 @@ export const Practice = () => {
             .maybeSingle();
 
           if (coach) {
-            // First get all practice sessions for this coach
+            // Get all practice sessions for this coach (including multi-batch sessions)
             const { data: coachPractices, error: practicesError } = await supabase
               .from('practice_sessions')
               .select(`
@@ -165,35 +165,86 @@ export const Practice = () => {
               `)
               .eq('coach_id', coach.id)
               .eq('session_date', selectedDate)
+              .order('session_group_id', { ascending: false })
               .order('created_at', { ascending: false });
 
             console.log('Coach practices query error:', practicesError);
             console.log('Coach practices fetched:', coachPractices);
 
-            // Get batch names separately for those that have batch_id
-            let batchNames = {};
-            if (coachPractices && coachPractices.length > 0) {
-              const batchIds = coachPractices
-                .filter(session => session.batch_id)
-                .map(session => session.batch_id);
+            // Group sessions by session_group_id to handle multi-batch sessions
+            interface SessionGroup {
+              sessions: any[];
+              batchIds: Set<string>;
+              athletes: Array<{id: string; name: string; sessionId: string}>;
+            }
+            
+            const sessionGroups: Record<string, SessionGroup> = {};
+            (coachPractices || []).forEach(session => {
+              const groupId = session.session_group_id || session.id; // Fallback for legacy sessions
+              if (!sessionGroups[groupId]) {
+                sessionGroups[groupId] = {
+                  sessions: [],
+                  batchIds: new Set<string>(),
+                  athletes: []
+                };
+              }
+              sessionGroups[groupId].sessions.push(session);
+              sessionGroups[groupId].athletes.push({
+                id: session.athlete_id,
+                name: (session.athletes as any)?.profiles?.full_name || 'Unknown',
+                sessionId: session.id
+              });
               
-              if (batchIds.length > 0) {
-                const { data: batchData } = await supabase
-                  .from('batches')
-                  .select('id, name')
-                  .in('id', batchIds)
-                  .eq('coach_id', coach.id);
-                
-                if (batchData) {
-                  batchNames = batchData.reduce((acc, batch) => {
-                    acc[batch.id] = batch.name;
-                    return acc;
-                  }, {});
+              // Collect batch IDs for this session group
+              if (session.batch_id) {
+                sessionGroups[groupId].batchIds.add(session.batch_id);
+              }
+            });
+
+            // Get batch information for session groups and also from session_batches table
+            let allBatchIds = new Set<string>();
+            const sessionIds = (coachPractices || []).map(s => s.id);
+            
+            // Get batches associated through session_batches table (for multi-batch sessions)
+            const { data: sessionBatches } = await supabase
+              .from('session_batches')
+              .select('session_id, batch_id')
+              .in('session_id', sessionIds);
+
+            // Map session batches to session groups
+            (sessionBatches || []).forEach(sb => {
+              const session = (coachPractices || []).find(s => s.id === sb.session_id);
+              if (session) {
+                const groupId = session.session_group_id || session.id;
+                if (sessionGroups[groupId]) {
+                  sessionGroups[groupId].batchIds.add(sb.batch_id);
                 }
+              }
+            });
+
+            // Collect all batch IDs
+            Object.values(sessionGroups).forEach(group => {
+              group.batchIds.forEach(id => allBatchIds.add(id));
+            });
+
+            // Get batch names
+            let batchNames = {};
+            if (allBatchIds.size > 0) {
+              const { data: batchData } = await supabase
+                .from('batches')
+                .select('id, name')
+                .in('id', Array.from(allBatchIds))
+                .eq('coach_id', coach.id);
+              
+              if (batchData) {
+                batchNames = batchData.reduce((acc, batch) => {
+                  acc[batch.id] = batch.name;
+                  return acc;
+                }, {});
               }
             }
 
-            // Get existing RPE logs for these sessions (both athlete and coach RPE)
+            // Get existing RPE logs for these sessions
             const sessionAthleteIds = (coachPractices || []).map(session => session.athlete_id);
             console.log('Session athlete IDs:', sessionAthleteIds);
             
@@ -205,30 +256,29 @@ export const Practice = () => {
 
             console.log('Existing RPE logs:', existingRpeLogs);
 
-            const coachTransformed = (coachPractices || []).map(session => {
-              const existingRpeLog = existingRpeLogs?.find(log => 
-                log.athlete_id === session.athlete_id && 
-                log.log_date === selectedDate &&
-                log.activity_type === session.session_type
-              );
-              
-              console.log(`Session ${session.id} - Athlete ${session.athlete_id} - Existing RPE:`, existingRpeLog);
-              
-              // Session is considered completed if either athlete or coach has filled RPE
-              const isCompleted = existingRpeLog && (existingRpeLog.rpe_score || existingRpeLog.coach_rpe);
-              
+            // Transform session groups into display sessions
+            const coachTransformed = Object.entries(sessionGroups).map(([groupId, group]) => {
+              const firstSession = group.sessions[0];
+              const batchNamesForGroup = Array.from(group.batchIds)
+                .map(id => batchNames[id])
+                .filter(Boolean)
+                .join(', ') || `${group.athletes.length} athletes`;
+
+              // For multi-athlete sessions, we'll show them as expandable groups
               return {
-                id: `coach-${session.id}`,
-                title: session.notes?.split(':')[0] || 'Practice Session',
+                id: `coach-group-${groupId}`,
+                title: firstSession.notes?.split(':')[0] || 'Practice Session',
                 time: 'Scheduled',
-                duration: `${session.duration_minutes || 0} mins`,
-                type: session.session_type || 'Practice',
-                status: isCompleted ? 'completed' : 'scheduled',
-                notes: session.notes,
-                athlete: batchNames[session.batch_id] || (session.athletes as any)?.profiles?.full_name || 'Unknown',
-                originalSession: session,
-                existingCoachRpe: existingRpeLog?.coach_rpe || null,
-                athleteRpe: existingRpeLog?.rpe_score || null
+                duration: `${firstSession.duration_minutes || 0} mins`,
+                type: firstSession.session_type || 'Practice',
+                status: 'scheduled', // We'll determine this based on individual athlete RPE
+                notes: firstSession.notes,
+                athlete: batchNamesForGroup,
+                athletes: group.athletes,
+                sessions: group.sessions,
+                sessionGroupId: groupId,
+                batchNames: Array.from(group.batchIds).map(id => batchNames[id]).filter(Boolean),
+                existingRpeLogs: existingRpeLogs
               };
             });
 
@@ -405,7 +455,7 @@ export const Practice = () => {
         .select('id')
         .eq('athlete_id', athleteId)
         .eq('log_date', selectedDate)
-        .eq('activity_type', session.originalSession?.session_type || 'Practice')
+        .eq('activity_type', session.type || 'Practice')
         .like('notes', '%scheduled practice%')
         .maybeSingle();
 
@@ -422,6 +472,7 @@ export const Practice = () => {
         if (updateError) throw updateError;
       } else {
         // Create new RPE log with coach RPE
+        const firstSession = session.sessions?.[0];
         const { error: insertError } = await supabase
           .from('rpe_logs')
           .insert({
@@ -429,9 +480,9 @@ export const Practice = () => {
             club_id: profile.club_id,
             log_date: selectedDate,
             coach_rpe: parseInt(rpeValue),
-            duration_minutes: session.originalSession?.duration_minutes || 0,
-            activity_type: session.originalSession?.session_type || 'Practice',
-            notes: `RPE for scheduled practice: ${session.originalSession?.notes || 'Practice session'}`
+            duration_minutes: firstSession?.duration_minutes || parseInt(session.duration) || 0,
+            activity_type: session.type || 'Practice',
+            notes: `RPE for scheduled practice: ${session.notes || 'Practice session'}`
           });
 
         if (insertError) throw insertError;
@@ -743,7 +794,7 @@ export const Practice = () => {
                   )}
                   
                   {/* Coach RPE Section for Coaches */}
-                  {profile?.role === 'coach' && session.originalSession && (
+                  {profile?.role === 'coach' && session.athletes && (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <Button
@@ -753,7 +804,7 @@ export const Practice = () => {
                           className="flex items-center space-x-2 bg-muted/50 hover:bg-muted/70"
                         >
                           <Users className="h-4 w-4" />
-                          <span>Athletes</span>
+                          <span>{session.athletes.length} Athletes</span>
                           <ChevronDown className={`h-4 w-4 transition-transform ${
                             expandedSessions.has(session.id) ? 'rotate-180' : ''
                           }`} />
@@ -762,73 +813,88 @@ export const Practice = () => {
                       
                       {expandedSessions.has(session.id) && (
                         <div className="space-y-2 p-3 bg-muted/30 rounded-lg border">
-                          <div className="flex items-center justify-between p-2 bg-card rounded-md">
-                            <div className="flex items-center space-x-2">
-                              <div className="w-2 h-2 bg-primary rounded-full"></div>
-                              <span className="text-sm font-medium">{session.athlete}</span>
-                            </div>
-                             <div className="flex items-center space-x-2">
-                               {session.existingCoachRpe && !coachRpeInputs[`${session.id}-${session.originalSession.athlete_id}`] ? (
-                                 <div className="flex items-center space-x-2">
-                                   <div className="bg-green-500/20 text-green-400 px-2 py-1 rounded text-sm font-medium">
-                                     RPE: {session.existingCoachRpe}
-                                   </div>
-                                   <Button
-                                     size="sm"
-                                     variant="outline"
-                                     className="h-8 px-2 bg-primary/10 hover:bg-primary/20 border-primary/30"
-                                     onClick={() => {
-                                       // Pre-fill the input with existing RPE for editing
-                                       setCoachRpeInputs(prev => ({
-                                         ...prev,
-                                         [`${session.id}-${session.originalSession.athlete_id}`]: session.existingCoachRpe.toString()
-                                       }));
-                                     }}
-                                   >
-                                     Edit
-                                   </Button>
-                                 </div>
-                               ) : (
-                                 <div className="flex items-center space-x-2">
-                                   <Input
-                                     type="number"
-                                     min="1"
-                                     max="10"
-                                     placeholder="RPE"
-                                     className="w-16 h-8 text-center bg-background"
-                                     value={coachRpeInputs[`${session.id}-${session.originalSession.athlete_id}`] || ''}
-                                     onChange={(e) => handleCoachRpeChange(session.id, session.originalSession.athlete_id, e.target.value)}
-                                   />
-                                   <Button
-                                     size="sm"
-                                     variant="outline"
-                                     className="h-8 px-2 bg-primary/10 hover:bg-primary/20 border-primary/30"
-                                     onClick={() => submitCoachRpe(session, session.originalSession.athlete_id)}
-                                     disabled={!coachRpeInputs[`${session.id}-${session.originalSession.athlete_id}`]}
-                                   >
-                                     <Star className="h-3 w-3" />
-                                   </Button>
-                                   {session.existingCoachRpe && (
-                                     <Button
-                                       size="sm"
-                                       variant="ghost"
-                                       className="h-8 px-2 text-muted-foreground"
-                                       onClick={() => {
-                                         // Clear the input to go back to saved state
-                                         setCoachRpeInputs(prev => {
-                                           const newInputs = { ...prev };
-                                           delete newInputs[`${session.id}-${session.originalSession.athlete_id}`];
-                                           return newInputs;
-                                         });
-                                       }}
-                                     >
-                                       Cancel
-                                     </Button>
-                                   )}
-                                 </div>
-                               )}
-                             </div>
-                          </div>
+                          {session.athletes.map((athlete) => {
+                            const existingRpeLog = session.existingRpeLogs?.find(log => 
+                              log.athlete_id === athlete.id && 
+                              log.log_date === selectedDate &&
+                              log.activity_type === session.type
+                            );
+                            
+                            return (
+                              <div key={athlete.id} className="flex items-center justify-between p-2 bg-card rounded-md">
+                                <div className="flex items-center space-x-2">
+                                  <div className="w-2 h-2 bg-primary rounded-full"></div>
+                                  <span className="text-sm font-medium">{athlete.name}</span>
+                                  {existingRpeLog?.rpe_score && (
+                                    <div className="bg-blue-500/20 text-blue-400 px-2 py-1 rounded text-xs font-medium">
+                                      Athlete RPE: {existingRpeLog.rpe_score}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  {existingRpeLog?.coach_rpe && !coachRpeInputs[`${session.id}-${athlete.id}`] ? (
+                                    <div className="flex items-center space-x-2">
+                                      <div className="bg-green-500/20 text-green-400 px-2 py-1 rounded text-sm font-medium">
+                                        Coach RPE: {existingRpeLog.coach_rpe}
+                                      </div>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-8 px-2 bg-primary/10 hover:bg-primary/20 border-primary/30"
+                                        onClick={() => {
+                                          // Pre-fill the input with existing RPE for editing
+                                          setCoachRpeInputs(prev => ({
+                                            ...prev,
+                                            [`${session.id}-${athlete.id}`]: existingRpeLog.coach_rpe.toString()
+                                          }));
+                                        }}
+                                      >
+                                        Edit
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center space-x-2">
+                                      <Input
+                                        type="number"
+                                        min="1"
+                                        max="10"
+                                        placeholder="RPE"
+                                        className="w-16 h-8 text-center bg-background"
+                                        value={coachRpeInputs[`${session.id}-${athlete.id}`] || ''}
+                                        onChange={(e) => handleCoachRpeChange(session.id, athlete.id, e.target.value)}
+                                      />
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-8 px-2 bg-primary/10 hover:bg-primary/20 border-primary/30"
+                                        onClick={() => submitCoachRpe(session, athlete.id)}
+                                        disabled={!coachRpeInputs[`${session.id}-${athlete.id}`]}
+                                      >
+                                        <Star className="h-3 w-3" />
+                                      </Button>
+                                      {existingRpeLog?.coach_rpe && (
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-8 px-2 text-muted-foreground"
+                                          onClick={() => {
+                                            // Clear the input to go back to saved state
+                                            setCoachRpeInputs(prev => {
+                                              const newInputs = { ...prev };
+                                              delete newInputs[`${session.id}-${athlete.id}`];
+                                              return newInputs;
+                                            });
+                                          }}
+                                        >
+                                          Cancel
+                                        </Button>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     </div>

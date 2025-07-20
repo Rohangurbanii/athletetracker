@@ -353,6 +353,7 @@ export type Database = {
           id: string
           notes: string | null
           session_date: string
+          session_group_id: string | null
           session_type: string | null
           updated_at: string | null
         }
@@ -366,6 +367,7 @@ export type Database = {
           id?: string
           notes?: string | null
           session_date: string
+          session_group_id?: string | null
           session_type?: string | null
           updated_at?: string | null
         }
@@ -379,6 +381,7 @@ export type Database = {
           id?: string
           notes?: string | null
           session_date?: string
+          session_group_id?: string | null
           session_type?: string | null
           updated_at?: string | null
         }
@@ -509,6 +512,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      session_batches: {
+        Row: {
+          batch_id: string
+          created_at: string
+          id: string
+          session_id: string
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string
+          id?: string
+          session_id: string
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string
+          id?: string
+          session_id?: string
+        }
+        Relationships: []
       }
       sleep_logs: {
         Row: {
