@@ -345,6 +345,7 @@ export type Database = {
       practice_sessions: {
         Row: {
           athlete_id: string
+          batch_id: string | null
           club_id: string
           coach_id: string | null
           created_at: string | null
@@ -357,6 +358,7 @@ export type Database = {
         }
         Insert: {
           athlete_id: string
+          batch_id?: string | null
           club_id: string
           coach_id?: string | null
           created_at?: string | null
@@ -369,6 +371,7 @@ export type Database = {
         }
         Update: {
           athlete_id?: string
+          batch_id?: string | null
           club_id?: string
           coach_id?: string | null
           created_at?: string | null

@@ -118,6 +118,7 @@ export const SchedulePracticeForm = () => {
         athlete_id,
         club_id: profile.club_id,
         coach_id: coach.id,
+        batch_id: formData.batchId, // Store the selected batch ID
         session_date: formData.date,
         session_type: formData.type,
         duration_minutes: parseInt(formData.duration),
