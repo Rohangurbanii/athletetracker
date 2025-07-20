@@ -143,7 +143,12 @@ export const Tournaments = () => {
               tournament_id,
               coach_completed_at,
               athlete_completed_at,
-              tournament:tournaments(*)
+              tournament:tournaments(*),
+              id,
+              position,
+              areas_of_improvement,
+              strong_points,
+              coach_comments
             `)
             .not('athlete_completed_at', 'is', null) // Only athletes who submitted results
             .in('athlete_id', athleteIds);
@@ -159,7 +164,8 @@ export const Tournaments = () => {
               tournamentMap.set(tournamentId, {
                 tournament: result.tournament,
                 total: 0,
-                completed: 0
+                completed: 0,
+                firstResult: result // Keep first result for structure
               });
             }
             const tournament = tournamentMap.get(tournamentId);
@@ -172,9 +178,18 @@ export const Tournaments = () => {
           console.log('Tournament map:', Array.from(tournamentMap.entries()));
 
           // Only include tournaments where ALL athletes have been commented on
+          // Return structure that matches what the rendering expects
           completedData = Array.from(tournamentMap.values())
             .filter(item => item.total > 0 && item.completed === item.total)
-            .map(item => ({ tournament: item.tournament }));
+            .map(item => ({
+              id: item.firstResult.id,
+              tournament: item.tournament,
+              position: null, // Coaches don't have individual positions
+              areas_of_improvement: null,
+              strong_points: null,
+              coach_comments: 'Completed commenting on all athletes',
+              result: 'Completed'
+            }));
 
           console.log('Completed tournaments for coach:', completedData);
         }

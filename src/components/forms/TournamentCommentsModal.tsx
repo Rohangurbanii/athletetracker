@@ -119,19 +119,19 @@ export const TournamentCommentsModal = ({
     try {
       setSubmitting(true);
 
-      // Update coach comments for each athlete result
-      for (const [resultId, comment] of Object.entries(comments)) {
-        if (comment.trim()) {
-          const { error } = await supabase
-            .from('tournament_results')
-            .update({
-              coach_comments: comment,
-              coach_completed_at: new Date().toISOString()
-            })
-            .eq('id', resultId);
+      // Update coach_completed_at for ALL athlete results, not just those with comments
+      // This ensures the tournament moves to completed even if coach doesn't comment on every athlete
+      for (const result of athleteResults) {
+        const comment = comments[result.id] || ''; // Use empty string if no comment
+        const { error } = await supabase
+          .from('tournament_results')
+          .update({
+            coach_comments: comment.trim() || null, // Set to null if empty
+            coach_completed_at: new Date().toISOString()
+          })
+          .eq('id', result.id);
 
-          if (error) throw error;
-        }
+        if (error) throw error;
       }
 
       toast({
@@ -243,7 +243,7 @@ export const TournamentCommentsModal = ({
               </Button>
               <Button 
                 onClick={handleSubmitComments} 
-                disabled={submitting || Object.keys(comments).length === 0}
+                disabled={submitting}
                 className="gradient-primary text-primary-foreground"
               >
                 {submitting ? 'Submitting...' : 'Submit Comments'}
