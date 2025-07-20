@@ -155,7 +155,9 @@ export const Progress = () => {
           status: goal.status === 'completed' ? 'completed' : 'in_progress',
           targetDate: goal.target_date,
           progress: goal.progress_percentage || 0,
-          createdDate: goal.created_at?.split('T')[0] || ''
+          createdDate: goal.created_at?.split('T')[0] || '',
+          coachCompleted: goal.coach_completed || false,
+          completedByCoachAt: goal.completed_by_coach_at
         }));
         setGoals(transformedGoals);
         console.log('Transformed goals:', transformedGoals);
@@ -282,6 +284,38 @@ export const Progress = () => {
     );
   };
 
+  const toggleCoachCompletion = async (goalId: string, currentStatus: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('goals')
+        .update({
+          coach_completed: !currentStatus,
+          completed_by_coach_at: !currentStatus ? new Date().toISOString() : null
+        })
+        .eq('id', goalId);
+
+      if (error) {
+        console.error('Error updating goal completion:', error);
+        return;
+      }
+
+      // Update local state
+      setGoals(prevGoals => 
+        prevGoals.map(goal => 
+          goal.id === goalId 
+            ? { 
+                ...goal, 
+                coachCompleted: !currentStatus,
+                completedByCoachAt: !currentStatus ? new Date().toISOString() : null
+              }
+            : goal
+        )
+      );
+    } catch (error) {
+      console.error('Error toggling coach completion:', error);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -396,16 +430,41 @@ export const Progress = () => {
                       <CardTitle className="text-lg">{goal.title}</CardTitle>
                     </div>
                     <p className="text-sm text-muted-foreground">{goal.description}</p>
+                    
+                    {/* Coach completion status for athletes */}
+                    {!isCoach && goal.coachCompleted && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <span className="text-sm text-green-600 font-medium">
+                          Marked complete by coach
+                        </span>
+                        {goal.completedByCoachAt && (
+                          <span className="text-xs text-muted-foreground">
+                            ({new Date(goal.completedByCoachAt).toLocaleDateString()})
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <Badge 
-                    className={
-                      goal.status === 'completed' 
-                        ? 'bg-green-500/20 text-green-400' 
-                        : 'bg-blue-500/20 text-blue-400'
-                    }
-                  >
-                    {goal.status === 'completed' ? 'Completed' : 'In Progress'}
-                  </Badge>
+                  
+                  <div className="flex flex-col gap-2">
+                    <Badge 
+                      className={
+                        goal.status === 'completed' 
+                          ? 'bg-green-500/20 text-green-400' 
+                          : 'bg-blue-500/20 text-blue-400'
+                      }
+                    >
+                      {goal.status === 'completed' ? 'Completed' : 'In Progress'}
+                    </Badge>
+                    
+                    {/* Coach completion badge */}
+                    {isCoach && goal.coachCompleted && (
+                      <Badge className="bg-emerald-500/20 text-emerald-400 text-xs">
+                        Coach Completed
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -445,24 +504,40 @@ export const Progress = () => {
                   </div>
 
                   {/* Actions */}
-                  {goal.status === 'in_progress' && (
-                    <div className="flex space-x-2">
-                      {isCoach ? (
-                        <>
-                          <Button variant="outline" className="flex-1">
-                            Update Progress
-                          </Button>
-                          <Button variant="outline">
-                            Mark Complete
-                          </Button>
-                        </>
-                      ) : (
-                        <Button variant="outline" className="flex-1">
-                          View Details
+                  <div className="flex space-x-2">
+                    {isCoach ? (
+                      <>
+                        <Button 
+                          variant="outline" 
+                          className="flex-1"
+                          disabled
+                        >
+                          Update Progress
                         </Button>
-                      )}
-                    </div>
-                  )}
+                        <Button 
+                          onClick={() => toggleCoachCompletion(goal.id, goal.coachCompleted)}
+                          className={`transition-all duration-200 ${
+                            goal.coachCompleted 
+                              ? 'bg-green-500 hover:bg-green-600 text-white' 
+                              : 'bg-primary hover:bg-primary/90 text-primary-foreground'
+                          }`}
+                        >
+                          {goal.coachCompleted ? (
+                            <>
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                              Complete
+                            </>
+                          ) : (
+                            'Mark Complete'
+                          )}
+                        </Button>
+                      </>
+                    ) : goal.status === 'in_progress' && (
+                      <Button variant="outline" className="flex-1">
+                        View Details
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>

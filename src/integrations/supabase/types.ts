@@ -292,6 +292,8 @@ export type Database = {
       goals: {
         Row: {
           athlete_id: string
+          coach_completed: boolean | null
+          completed_by_coach_at: string | null
           created_at: string | null
           description: string | null
           id: string
@@ -304,6 +306,8 @@ export type Database = {
         }
         Insert: {
           athlete_id: string
+          coach_completed?: boolean | null
+          completed_by_coach_at?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -316,6 +320,8 @@ export type Database = {
         }
         Update: {
           athlete_id?: string
+          coach_completed?: boolean | null
+          completed_by_coach_at?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
