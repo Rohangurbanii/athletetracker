@@ -482,55 +482,57 @@ export const Analytics = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="border-b border-border">
-                        <th className="text-left p-3 text-sm font-medium text-muted-foreground">Date</th>
-                        <th className="text-left p-3 text-sm font-medium text-muted-foreground">Activity</th>
-                        <th className="text-center p-3 text-sm font-medium text-muted-foreground">Athlete RPE</th>
-                        <th className="text-center p-3 text-sm font-medium text-muted-foreground">Coach RPE</th>
-                        <th className="text-center p-3 text-sm font-medium text-muted-foreground">Difference</th>
-                        <th className="text-left p-3 text-sm font-medium text-muted-foreground">Duration</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rpeComparisonData.map((row, index) => (
-                        <tr key={index} className="border-b border-border/50 hover:bg-muted/30">
-                          <td className="p-3 text-sm">{new Date(row.date).toLocaleDateString()}</td>
-                          <td className="p-3 text-sm">
-                            <Badge variant="outline" className="text-xs">
-                              {row.activityType}
-                            </Badge>
-                          </td>
-                          <td className="p-3 text-center">
-                            <div className="flex items-center justify-center space-x-1">
-                              <Star className="h-3 w-3 text-blue-500" />
-                              <span className="text-sm font-medium">{row.athleteRpe}</span>
-                            </div>
-                          </td>
-                          <td className="p-3 text-center">
-                            <div className="flex items-center justify-center space-x-1">
-                              <Star className="h-3 w-3 text-orange-500" />
-                              <span className="text-sm font-medium">{row.coachRpe}</span>
-                            </div>
-                          </td>
-                          <td className="p-3 text-center">
-                            <div className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
-                              row.difference > 0 
-                                ? 'bg-red-500/20 text-red-400' 
-                                : row.difference < 0 
-                                ? 'bg-green-500/20 text-green-400'
-                                : 'bg-gray-500/20 text-gray-400'
-                            }`}>
-                              {row.difference > 0 ? '+' : ''}{row.difference}
-                            </div>
-                          </td>
-                          <td className="p-3 text-sm text-muted-foreground">{row.duration} min</td>
+                <div className="max-h-64 overflow-y-auto">
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead className="sticky top-0 bg-background z-10">
+                        <tr className="border-b border-border">
+                          <th className="text-left p-3 text-sm font-medium text-muted-foreground">Date</th>
+                          <th className="text-left p-3 text-sm font-medium text-muted-foreground">Activity</th>
+                          <th className="text-center p-3 text-sm font-medium text-muted-foreground">Athlete RPE</th>
+                          <th className="text-center p-3 text-sm font-medium text-muted-foreground">Coach RPE</th>
+                          <th className="text-center p-3 text-sm font-medium text-muted-foreground">Difference</th>
+                          <th className="text-left p-3 text-sm font-medium text-muted-foreground">Duration</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {rpeComparisonData.map((row, index) => (
+                          <tr key={index} className="border-b border-border/50 hover:bg-muted/30">
+                            <td className="p-3 text-sm">{new Date(row.date).toLocaleDateString()}</td>
+                            <td className="p-3 text-sm">
+                              <Badge variant="outline" className="text-xs">
+                                {row.activityType}
+                              </Badge>
+                            </td>
+                            <td className="p-3 text-center">
+                              <div className="flex items-center justify-center space-x-1">
+                                <Star className="h-3 w-3 text-blue-500" />
+                                <span className="text-sm font-medium">{row.athleteRpe}</span>
+                              </div>
+                            </td>
+                            <td className="p-3 text-center">
+                              <div className="flex items-center justify-center space-x-1">
+                                <Star className="h-3 w-3 text-orange-500" />
+                                <span className="text-sm font-medium">{row.coachRpe}</span>
+                              </div>
+                            </td>
+                            <td className="p-3 text-center">
+                              <div className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
+                                row.difference > 0 
+                                  ? 'bg-red-500/20 text-red-400' 
+                                  : row.difference < 0 
+                                  ? 'bg-green-500/20 text-green-400'
+                                  : 'bg-gray-500/20 text-gray-400'
+                              }`}>
+                                {row.difference > 0 ? '+' : ''}{row.difference}
+                              </div>
+                            </td>
+                            <td className="p-3 text-sm text-muted-foreground">{row.duration} min</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
                 <div className="mt-4 p-3 bg-muted/30 rounded-lg">
                   <p className="text-xs text-muted-foreground">
