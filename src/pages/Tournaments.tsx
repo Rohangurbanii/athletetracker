@@ -177,6 +177,56 @@ export const Tournaments = () => {
     }
   };
 
+  const deleteCoachComments = async (tournamentId: string) => {
+    try {
+      if (!profile) return;
+
+      // Get coach ID
+      const { data: coachData } = await supabase
+        .from('coaches')
+        .select('id')
+        .eq('profile_id', profile.id)
+        .single();
+
+      if (!coachData) return;
+
+      // Get batch athlete IDs for this coach
+      const { data: batchData } = await supabase
+        .from('batches')
+        .select('id')
+        .eq('coach_id', coachData.id);
+
+      const batchIds = batchData?.map(b => b.id) || [];
+
+      const { data: batchAthleteData } = await supabase
+        .from('batch_athletes')
+        .select('athlete_id')
+        .in('batch_id', batchIds);
+
+      const athleteIds = batchAthleteData?.map(ba => ba.athlete_id) || [];
+
+      // Clear coach comments and coach_completed_at for all athletes in this tournament
+      const { error } = await supabase
+        .from('tournament_results')
+        .update({
+          coach_comments: null,
+          coach_completed_at: null
+        })
+        .eq('tournament_id', tournamentId)
+        .in('athlete_id', athleteIds);
+
+      if (error) {
+        console.error('Delete comments error:', error);
+        throw error;
+      }
+      
+      // Refresh tournaments to move back to upcoming
+      await fetchTournaments();
+    } catch (error) {
+      console.error('Error deleting coach comments:', error);
+    }
+  };
+
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }, (_, index) => (
       <Star
@@ -423,6 +473,27 @@ export const Tournaments = () => {
                           onClick={() => deleteResult(result.id)}
                         >
                           Delete Results
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Edit Comments Button for Coaches in Completed Tab */}
+                    {isCoach && (
+                      <div className="pt-4 border-t flex space-x-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setShowCommentsModal({ id: result.tournament.id, name: result.tournament.name })}
+                        >
+                          <Star className="h-4 w-4 mr-2" />
+                          Edit Comments
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={() => deleteCoachComments(result.tournament.id)}
+                        >
+                          Delete Comments
                         </Button>
                       </div>
                     )}
