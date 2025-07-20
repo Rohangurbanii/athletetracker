@@ -525,45 +525,23 @@ export const Practice = () => {
             <CardContent>
               {session.status === 'completed' ? (
                 <div className="space-y-4">
-                  {/* RPE Display Section */}
-                  <div className="space-y-3">
-                    {/* Athlete RPE */}
-                    {session.athleteRpe && (
-                      <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-500/10 to-blue-600/10 rounded-lg border border-blue-500/20">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center">
-                            <Star className="h-4 w-4 text-blue-400" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-foreground">Athlete RPE</p>
-                            <p className="text-sm text-muted-foreground">Self-reported effort level</p>
-                          </div>
+                  {/* Session Attended - when no RPE is shown */}
+                  {!session.athleteRpe && !(profile?.role === 'coach' && session.existingCoachRpe) && (
+                    <div className="flex items-center justify-between p-3 bg-gradient-to-r from-emerald-500/10 to-emerald-600/10 rounded-lg border border-emerald-500/20">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-emerald-500/20 rounded-full flex items-center justify-center">
+                          <div className="w-3 h-3 bg-emerald-400 rounded-full" />
                         </div>
-                        <div className="text-right">
-                          <div className="text-2xl font-bold text-blue-400">{session.athleteRpe}</div>
-                          <div className="text-sm text-muted-foreground">/10</div>
+                        <div>
+                          <p className="font-medium text-foreground">Session Completed</p>
+                          <p className="text-sm text-muted-foreground">Attendance confirmed</p>
                         </div>
                       </div>
-                    )}
-                    
-                    {/* Session Attended - when no RPE is shown */}
-                    {!session.athleteRpe && !(profile?.role === 'coach' && session.existingCoachRpe) && (
-                      <div className="flex items-center justify-between p-3 bg-gradient-to-r from-emerald-500/10 to-emerald-600/10 rounded-lg border border-emerald-500/20">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-emerald-500/20 rounded-full flex items-center justify-center">
-                            <div className="w-3 h-3 bg-emerald-400 rounded-full" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-foreground">Session Completed</p>
-                            <p className="text-sm text-muted-foreground">Attendance confirmed</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm font-medium text-emerald-400">Attended</div>
-                        </div>
+                      <div className="text-right">
+                        <div className="text-sm font-medium text-emerald-400">Attended</div>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                   
                   {/* Session Notes */}
                   {session.notes && (
