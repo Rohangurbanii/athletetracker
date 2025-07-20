@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Slider } from '@/components/ui/slider';
 import { Target, MessageSquare, CheckCircle, Clock, Plus, Calendar } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -518,39 +517,43 @@ export const Progress = () => {
                       <span className="text-muted-foreground">Progress</span>
                       <span className="font-medium">{goal.progress}%</span>
                     </div>
-                    
-                    {/* For coaches: Interactive slider */}
-                    {isCoach ? (
-                      <div className="space-y-2">
-                        <Slider
-                          value={[goal.progress]}
-                          onValueChange={(values) => {
-                            console.log('Slider value changed:', values[0]);
-                            updateProgress(goal.id, values[0]);
-                          }}
-                          max={100}
-                          min={0}
-                          step={5}
-                          className="w-full cursor-pointer"
-                          disabled={false} // Always enable the slider for coaches
-                        />
-                        <div className="flex justify-between text-xs text-muted-foreground pointer-events-none">
-                          <span>0%</span>
-                          <span>25%</span>
-                          <span>50%</span>
-                          <span>75%</span>
-                          <span>100%</span>
-                        </div>
-                      </div>
-                    ) : (
-                      /* For athletes: Static progress bar */
-                      <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
-                        <div 
-                          className="gradient-primary h-full rounded-full transition-all duration-500 ease-out"
-                          style={{ width: `${goal.progress}%` }}
-                        />
-                      </div>
-                    )}
+                     
+                     {/* For coaches: Clickable percentage buttons */}
+                     {isCoach ? (
+                       <div className="space-y-3">
+                         <div className="flex flex-wrap gap-1">
+                           {Array.from({ length: 21 }, (_, i) => i * 5).map((percentage) => (
+                             <Button
+                               key={percentage}
+                               size="sm"
+                               variant={goal.progress === percentage ? "default" : "outline"}
+                               className={`text-xs px-2 py-1 ${
+                                 goal.progress === percentage 
+                                   ? 'bg-primary text-primary-foreground' 
+                                   : 'hover:bg-muted'
+                               }`}
+                               onClick={() => updateProgress(goal.id, percentage)}
+                             >
+                               {percentage}%
+                             </Button>
+                           ))}
+                         </div>
+                         <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                           <div 
+                             className="gradient-primary h-full rounded-full transition-all duration-300"
+                             style={{ width: `${goal.progress}%` }}
+                           />
+                         </div>
+                       </div>
+                     ) : (
+                       /* For athletes: Static progress bar */
+                       <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
+                         <div 
+                           className="gradient-primary h-full rounded-full transition-all duration-500 ease-out"
+                           style={{ width: `${goal.progress}%` }}
+                         />
+                       </div>
+                     )}
                   </div>
 
                   {/* Goal Details */}
