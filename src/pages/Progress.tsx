@@ -99,6 +99,8 @@ export const Progress = () => {
 
       // Get athlete data based on user role
       let athleteId = targetAthleteId;
+      
+      // For coaches, targetAthleteId is the athlete ID directly
       if (!athleteId && profile?.role === 'athlete') {
         const { data: athleteData, error: athleteError } = await supabase
           .from('athletes')
