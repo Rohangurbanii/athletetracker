@@ -109,7 +109,7 @@ export const Tournaments = () => {
           completedData = data || [];
         }
       } else if (isCoach) {
-        // For coaches, get tournaments they have completed commenting on
+        // For coaches, get tournaments where they have completed commenting on ALL athletes
         const { data: coachData } = await supabase
           .from('coaches')
           .select('id')
@@ -132,20 +132,40 @@ export const Tournaments = () => {
 
           const athleteIds = batchAthleteData?.map(ba => ba.athlete_id) || [];
 
-          const { data } = await supabase
+          // Get all tournament results for coach's athletes
+          const { data: allResults } = await supabase
             .from('tournament_results')
             .select(`
-              tournament:tournaments(*),
-              coach_completed_at
+              tournament_id,
+              coach_completed_at,
+              tournament:tournaments(*)
             `)
-            .not('coach_completed_at', 'is', null)
+            .not('athlete_completed_at', 'is', null) // Only athletes who submitted results
             .in('athlete_id', athleteIds);
+
+          // Group by tournament and check if ALL athletes have coach comments
+          const tournamentMap = new Map();
           
-          // Get unique tournaments
-          const uniqueTournaments = Array.from(
-            new Map(data?.map(item => [item.tournament.id, item]) || []).values()
-          );
-          completedData = uniqueTournaments;
+          allResults?.forEach(result => {
+            const tournamentId = result.tournament_id;
+            if (!tournamentMap.has(tournamentId)) {
+              tournamentMap.set(tournamentId, {
+                tournament: result.tournament,
+                total: 0,
+                completed: 0
+              });
+            }
+            const tournament = tournamentMap.get(tournamentId);
+            tournament.total++;
+            if (result.coach_completed_at) {
+              tournament.completed++;
+            }
+          });
+
+          // Only include tournaments where ALL athletes have been commented on
+          completedData = Array.from(tournamentMap.values())
+            .filter(item => item.total > 0 && item.completed === item.total)
+            .map(item => ({ tournament: item.tournament }));
         }
       }
 
