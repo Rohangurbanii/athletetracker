@@ -46,13 +46,13 @@ export const Tournaments = () => {
       setLoading(true);
 
       // Fetch upcoming tournaments
-      let upcomingQuery = supabase
+      const { data: upcomingData } = await supabase
         .from('tournaments')
         .select('*')
         .gte('start_date', new Date().toISOString().split('T')[0])
         .order('start_date', { ascending: true });
 
-      // If athlete, exclude tournaments they have already submitted results for
+      // If athlete, check which tournaments they have submitted results for
       if (isAthlete && profile) {
         const { data: athleteData } = await supabase
           .from('athletes')
@@ -61,19 +61,11 @@ export const Tournaments = () => {
           .single();
 
         if (athleteData) {
-          // Get tournament IDs where athlete has submitted results
           const { data: resultsData } = await supabase
             .from('tournament_results')
             .select('tournament_id')
             .eq('athlete_id', athleteData.id)
             .not('athlete_completed_at', 'is', null);
-
-          const completedTournamentIds = (resultsData || []).map(r => r.tournament_id);
-
-          // Exclude completed tournaments from upcoming list
-          if (completedTournamentIds.length > 0) {
-            upcomingQuery = upcomingQuery.not('id', 'in', `(${completedTournamentIds.join(',')})`);
-          }
 
           const resultsMap = (resultsData || []).reduce((acc, result) => {
             acc[result.tournament_id] = true;
@@ -83,8 +75,6 @@ export const Tournaments = () => {
           setAthleteResults(resultsMap);
         }
       }
-
-      const { data: upcomingData } = await upcomingQuery;
 
       // Fetch completed tournaments with results for the current user
       let completedData = [];
@@ -156,6 +146,22 @@ export const Tournaments = () => {
       console.error('Error fetching tournaments:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const deleteResult = async (resultId: string) => {
+    try {
+      const { error } = await supabase
+        .from('tournament_results')
+        .delete()
+        .eq('id', resultId);
+
+      if (error) throw error;
+      
+      // Refresh tournaments to move back to upcoming
+      await fetchTournaments();
+    } catch (error) {
+      console.error('Error deleting result:', error);
     }
   };
 
@@ -282,17 +288,15 @@ export const Tournaments = () => {
                         Register
                       </Button>
                      )}
-                    {isAthlete && !athleteResults[tournament.id] && 
-                      new Date() > new Date(tournament.end_date || tournament.start_date) && (
-                        <Button 
-                          variant="outline"
-                          onClick={() => setShowResultsForm({ id: tournament.id, name: tournament.name })}
-                        >
-                          <Trophy className="h-4 w-4 mr-2" />
-                          Results
-                        </Button>
-                      )
-                    }
+                    {isAthlete && !athleteResults[tournament.id] && (
+                      <Button 
+                        variant="outline"
+                        onClick={() => setShowResultsForm({ id: tournament.id, name: tournament.name })}
+                      >
+                        <Trophy className="h-4 w-4 mr-2" />
+                        Results
+                      </Button>
+                    )}
                     {isCoach ? (
                       <Button 
                         variant="outline"
@@ -397,7 +401,7 @@ export const Tournaments = () => {
                     
                     {/* Edit Results Button for Athletes in Completed Tab */}
                     {isAthlete && (
-                      <div className="pt-4 border-t">
+                      <div className="pt-4 border-t flex space-x-2">
                         <Button 
                           variant="outline" 
                           size="sm"
@@ -405,6 +409,13 @@ export const Tournaments = () => {
                         >
                           <Trophy className="h-4 w-4 mr-2" />
                           Edit Results
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={() => deleteResult(result.id)}
+                        >
+                          Delete Results
                         </Button>
                       </div>
                     )}
