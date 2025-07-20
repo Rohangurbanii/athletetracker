@@ -159,17 +159,30 @@ export const Practice = () => {
               .eq('session_date', selectedDate)
               .order('created_at', { ascending: false });
 
+            console.log('Coach practices fetched:', coachPractices);
+
             // Get existing RPE logs for these sessions
             const sessionAthleteIds = (coachPractices || []).map(session => session.athlete_id);
+            console.log('Session athlete IDs:', sessionAthleteIds);
+            
             const { data: existingRpeLogs } = await supabase
               .from('rpe_logs')
-              .select('athlete_id, coach_rpe')
+              .select('athlete_id, coach_rpe, log_date, activity_type')
               .in('athlete_id', sessionAthleteIds)
               .eq('log_date', selectedDate)
               .not('coach_rpe', 'is', null);
 
+            console.log('Existing coach RPE logs:', existingRpeLogs);
+
             const coachTransformed = (coachPractices || []).map(session => {
-              const existingCoachRpe = existingRpeLogs?.find(log => log.athlete_id === session.athlete_id);
+              const existingCoachRpe = existingRpeLogs?.find(log => 
+                log.athlete_id === session.athlete_id && 
+                log.log_date === selectedDate &&
+                log.activity_type === session.session_type
+              );
+              
+              console.log(`Session ${session.id} - Athlete ${session.athlete_id} - Existing RPE:`, existingCoachRpe);
+              
               return {
                 id: `coach-${session.id}`,
                 title: session.notes?.split(':')[0] || 'Practice Session',
@@ -180,7 +193,7 @@ export const Practice = () => {
                 notes: session.notes,
                 athlete: session.athletes?.profiles?.full_name || 'Athlete',
                 originalSession: session,
-                existingCoachRpe: existingCoachRpe?.coach_rpe
+                existingCoachRpe: existingCoachRpe?.coach_rpe || null
               };
             });
 
@@ -597,50 +610,67 @@ export const Practice = () => {
                               <div className="w-2 h-2 bg-primary rounded-full"></div>
                               <span className="text-sm font-medium">{session.athlete}</span>
                             </div>
-                            <div className="flex items-center space-x-2">
-                              {session.existingCoachRpe ? (
-                                <div className="flex items-center space-x-2">
-                                  <div className="bg-green-500/20 text-green-400 px-2 py-1 rounded text-sm font-medium">
-                                    RPE: {session.existingCoachRpe}
-                                  </div>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-8 px-2 bg-primary/10 hover:bg-primary/20 border-primary/30"
-                                    onClick={() => {
-                                      // Pre-fill the input with existing RPE for editing
-                                      setCoachRpeInputs(prev => ({
-                                        ...prev,
-                                        [`${session.id}-${session.originalSession.athlete_id}`]: session.existingCoachRpe.toString()
-                                      }));
-                                    }}
-                                  >
-                                    Edit
-                                  </Button>
-                                </div>
-                              ) : (
-                                <>
-                                  <Input
-                                    type="number"
-                                    min="1"
-                                    max="10"
-                                    placeholder="RPE"
-                                    className="w-16 h-8 text-center bg-background"
-                                    value={coachRpeInputs[`${session.id}-${session.originalSession.athlete_id}`] || ''}
-                                    onChange={(e) => handleCoachRpeChange(session.id, session.originalSession.athlete_id, e.target.value)}
-                                  />
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-8 px-2 bg-primary/10 hover:bg-primary/20 border-primary/30"
-                                    onClick={() => submitCoachRpe(session, session.originalSession.athlete_id)}
-                                    disabled={!coachRpeInputs[`${session.id}-${session.originalSession.athlete_id}`]}
-                                  >
-                                    <Star className="h-3 w-3" />
-                                  </Button>
-                                </>
-                              )}
-                            </div>
+                             <div className="flex items-center space-x-2">
+                               {session.existingCoachRpe && !coachRpeInputs[`${session.id}-${session.originalSession.athlete_id}`] ? (
+                                 <div className="flex items-center space-x-2">
+                                   <div className="bg-green-500/20 text-green-400 px-2 py-1 rounded text-sm font-medium">
+                                     RPE: {session.existingCoachRpe}
+                                   </div>
+                                   <Button
+                                     size="sm"
+                                     variant="outline"
+                                     className="h-8 px-2 bg-primary/10 hover:bg-primary/20 border-primary/30"
+                                     onClick={() => {
+                                       // Pre-fill the input with existing RPE for editing
+                                       setCoachRpeInputs(prev => ({
+                                         ...prev,
+                                         [`${session.id}-${session.originalSession.athlete_id}`]: session.existingCoachRpe.toString()
+                                       }));
+                                     }}
+                                   >
+                                     Edit
+                                   </Button>
+                                 </div>
+                               ) : (
+                                 <div className="flex items-center space-x-2">
+                                   <Input
+                                     type="number"
+                                     min="1"
+                                     max="10"
+                                     placeholder="RPE"
+                                     className="w-16 h-8 text-center bg-background"
+                                     value={coachRpeInputs[`${session.id}-${session.originalSession.athlete_id}`] || ''}
+                                     onChange={(e) => handleCoachRpeChange(session.id, session.originalSession.athlete_id, e.target.value)}
+                                   />
+                                   <Button
+                                     size="sm"
+                                     variant="outline"
+                                     className="h-8 px-2 bg-primary/10 hover:bg-primary/20 border-primary/30"
+                                     onClick={() => submitCoachRpe(session, session.originalSession.athlete_id)}
+                                     disabled={!coachRpeInputs[`${session.id}-${session.originalSession.athlete_id}`]}
+                                   >
+                                     <Star className="h-3 w-3" />
+                                   </Button>
+                                   {session.existingCoachRpe && (
+                                     <Button
+                                       size="sm"
+                                       variant="ghost"
+                                       className="h-8 px-2 text-muted-foreground"
+                                       onClick={() => {
+                                         // Clear the input to go back to saved state
+                                         setCoachRpeInputs(prev => {
+                                           const newInputs = { ...prev };
+                                           delete newInputs[`${session.id}-${session.originalSession.athlete_id}`];
+                                           return newInputs;
+                                         });
+                                       }}
+                                     >
+                                       Cancel
+                                     </Button>
+                                   )}
+                                 </div>
+                               )}
+                             </div>
                           </div>
                         </div>
                       )}
