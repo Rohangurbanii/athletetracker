@@ -370,63 +370,63 @@ export const Analytics = () => {
       {displayData ? (
         <>
           {/* Key Metrics Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="bg-card/50 backdrop-blur border-border/20 p-8">
-              <div className="flex items-start space-x-6">
-                <div className="w-16 h-16 bg-orange-500 rounded-2xl flex items-center justify-center">
-                  <Activity className="h-8 w-8 text-white" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card className="bg-card/50 backdrop-blur border-border/20 p-4">
+              <div className="flex items-start space-x-4">
+                <div className="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center">
+                  <Activity className="h-6 w-6 text-white" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-lg text-muted-foreground font-medium mb-2">This Week</p>
+                  <p className="text-sm text-muted-foreground font-medium mb-1">This Week</p>
                   <div className="flex items-baseline space-x-1">
-                    <span className="text-5xl font-bold text-foreground">{displayData.totalSessions}</span>
+                    <span className="text-3xl font-bold text-foreground">{displayData.totalSessions}</span>
                   </div>
-                  <p className="text-xl text-muted-foreground mt-2 font-medium">Sessions</p>
+                  <p className="text-sm text-muted-foreground mt-1 font-medium">Sessions</p>
                 </div>
               </div>
             </Card>
 
-            <Card className="bg-card/50 backdrop-blur border-border/20 p-8">
-              <div className="flex items-start space-x-6">
-                <div className="w-16 h-16 bg-blue-500 rounded-2xl flex items-center justify-center">
-                  <TrendingUp className="h-8 w-8 text-white" />
+            <Card className="bg-card/50 backdrop-blur border-border/20 p-4">
+              <div className="flex items-start space-x-4">
+                <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center">
+                  <TrendingUp className="h-6 w-6 text-white" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-lg text-muted-foreground font-medium mb-2">Avg RPE</p>
+                  <p className="text-sm text-muted-foreground font-medium mb-1">Avg RPE</p>
                   <div className="flex items-baseline space-x-1">
-                    <span className="text-5xl font-bold text-foreground">{displayData.avgRPE.toFixed(0)}</span>
+                    <span className="text-3xl font-bold text-foreground">{displayData.avgRPE.toFixed(0)}</span>
                   </div>
-                  <p className="text-xl text-muted-foreground mt-2 font-medium">out of 10</p>
+                  <p className="text-sm text-muted-foreground mt-1 font-medium">out of 10</p>
                 </div>
               </div>
             </Card>
 
-            <Card className="bg-card/50 backdrop-blur border-border/20 p-8">
-              <div className="flex items-start space-x-6">
-                <div className="w-16 h-16 bg-green-500 rounded-2xl flex items-center justify-center">
-                  <Target className="h-8 w-8 text-white" />
+            <Card className="bg-card/50 backdrop-blur border-border/20 p-4">
+              <div className="flex items-start space-x-4">
+                <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center">
+                  <Target className="h-6 w-6 text-white" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-lg text-muted-foreground font-medium mb-2">Training Load</p>
+                  <p className="text-sm text-muted-foreground font-medium mb-1">Training Load</p>
                   <div className="flex items-baseline space-x-1">
-                    <span className="text-5xl font-bold text-foreground">{displayData.trainingLoad}</span>
+                    <span className="text-3xl font-bold text-foreground">{displayData.trainingLoad}</span>
                   </div>
-                  <p className="text-xl text-muted-foreground mt-2 font-medium">Total Score</p>
+                  <p className="text-sm text-muted-foreground mt-1 font-medium">Total Score</p>
                 </div>
               </div>
             </Card>
 
-            <Card className="bg-card/50 backdrop-blur border-border/20 p-8">
-              <div className="flex items-start space-x-6">
-                <div className="w-16 h-16 bg-purple-500 rounded-2xl flex items-center justify-center">
-                  <BarChart3 className="h-8 w-8 text-white" />
+            <Card className="bg-card/50 backdrop-blur border-border/20 p-4">
+              <div className="flex items-start space-x-4">
+                <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center">
+                  <BarChart3 className="h-6 w-6 text-white" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-lg text-muted-foreground font-medium mb-2">Sleep Quality</p>
+                  <p className="text-sm text-muted-foreground font-medium mb-1">Sleep Quality</p>
                   <div className="flex items-baseline space-x-1">
-                    <span className="text-5xl font-bold text-foreground">{displayData.avgSleep.toFixed(1)}</span>
+                    <span className="text-3xl font-bold text-foreground">{displayData.avgSleep.toFixed(1)}</span>
                   </div>
-                  <p className="text-xl text-muted-foreground mt-2 font-medium">Average Hours</p>
+                  <p className="text-sm text-muted-foreground mt-1 font-medium">Average Hours</p>
                 </div>
               </div>
             </Card>
