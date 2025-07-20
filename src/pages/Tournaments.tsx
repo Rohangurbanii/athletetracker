@@ -83,6 +83,13 @@ export const Tournaments = () => {
             {isCoach ? 'Manage tournament schedules and results' : 'Track your competition journey'}
           </p>
         </div>
+        <Button 
+          className="gradient-primary text-primary-foreground"
+          onClick={() => setShowAddForm(true)}
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add Tournament
+        </Button>
       </div>
 
       {/* Tab Navigation */}
@@ -252,16 +259,9 @@ export const Tournaments = () => {
           <CardContent className="text-center py-12">
             <Trophy className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">No upcoming tournaments</h3>
-            <p className="text-muted-foreground mb-4">
-              Explore available tournaments and register for competitions
+            <p className="text-muted-foreground">
+              Use the "Add Tournament" button above to create your first tournament
             </p>
-            <Button 
-              className="gradient-primary text-primary-foreground"
-              onClick={() => setShowAddForm(true)}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Tournament
-            </Button>
           </CardContent>
         </Card>
       )}
