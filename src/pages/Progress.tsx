@@ -300,54 +300,19 @@ export const Progress = () => {
                 <Card key={comment.id} className="sport-card">
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
-                      <div className="space-y-2">
-                        <CardTitle className="text-lg">{comment.tournament.name}</CardTitle>
-                        <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                          <span className="flex items-center">
-                            <Calendar className="h-4 w-4 mr-1" />
-                            {new Date(comment.tournament.start_date).toLocaleDateString()}
-                          </span>
-                          {comment.tournament.location && (
-                            <span>{comment.tournament.location}</span>
-                          )}
-                        </div>
-                      </div>
+                      <CardTitle className="text-lg">{comment.tournament.name}</CardTitle>
                       <Badge className="bg-blue-500/20 text-blue-400">
                         Coach Feedback
                       </Badge>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    {comment.position && (
-                      <div className="stat-card">
-                        <p className="text-sm text-muted-foreground mb-1">Position</p>
-                        <p className="text-sm font-semibold">{comment.position}</p>
-                      </div>
-                    )}
-                    
-                    {comment.strong_points && (
-                      <div className="stat-card">
-                        <p className="text-sm text-green-400 mb-2 font-semibold">Your Strong Points</p>
-                        <p className="text-sm">{comment.strong_points}</p>
-                      </div>
-                    )}
-                    
-                    {comment.areas_of_improvement && (
-                      <div className="stat-card">
-                        <p className="text-sm text-orange-400 mb-2 font-semibold">Areas to Improve</p>
-                        <p className="text-sm">{comment.areas_of_improvement}</p>
-                      </div>
-                    )}
-                    
+                  <CardContent>
                     <div className="stat-card border-l-4 border-blue-400">
                       <div className="flex items-center gap-2 mb-2">
                         <MessageSquare className="h-4 w-4 text-blue-400" />
                         <p className="text-sm text-blue-400 font-semibold">Coach Comments</p>
                       </div>
                       <p className="text-sm">{comment.coach_comments}</p>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        {new Date(comment.coach_completed_at).toLocaleDateString()}
-                      </p>
                     </div>
                   </CardContent>
                 </Card>
