@@ -320,130 +320,7 @@ export const Dashboard = () => {
         </p>
       </div>
 
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 gap-4">
-        <Card className="sport-card">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-3">
-              <div className="gradient-primary p-2 rounded-lg">
-                <Activity className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">This Week</p>
-                <p className="text-xl font-bold">{analytics.weekSessions} Sessions</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="sport-card">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-3">
-              <div className="gradient-secondary p-2 rounded-lg">
-                <TrendingUp className="h-5 w-5 text-accent-foreground" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Avg RPE</p>
-                <p className="text-xl font-bold">{analytics.avgRPE || 'N/A'}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Today's Schedule / Attendance */}
-      <Card className="sport-card">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Calendar className="h-5 w-5" />
-              <span>{isCoach ? 'Attendance' : "Today's Schedule"}</span>
-            </div>
-            {isCoach && (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-[240px] justify-start text-left font-normal",
-                      !selectedDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarDays className="mr-2 h-4 w-4" />
-                    {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarComponent
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={setSelectedDate}
-                    initialFocus
-                    className={cn("p-3 pointer-events-auto")}
-                  />
-                </PopoverContent>
-              </Popover>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isCoach ? (
-            // Coach: Show attendance data with fixed height and scroll
-            <div className="h-64">
-              {attendanceData.length > 0 ? (
-                <div className="h-full overflow-y-auto space-y-2">
-                  {attendanceData.map((athlete, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-card/50 rounded-lg border border-border/50">
-                      <div>
-                        <p className="font-medium">{athlete.athlete_name}</p>
-                        {athlete.status === 'attended' && athlete.coach_rpe && (
-                          <p className="text-sm text-muted-foreground">Coach RPE: {athlete.coach_rpe}</p>
-                        )}
-                      </div>
-                      <Badge variant={athlete.status === 'attended' ? 'default' : 'secondary'}>
-                        {athlete.status === 'attended' ? 'Attended' : 'Absent'}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="h-full flex flex-col items-center justify-center">
-                  <Users className="h-12 w-12 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">No athletes found for selected date</p>
-                  <p className="text-sm text-muted-foreground">Make sure you have athletes assigned to your batches</p>
-                </div>
-              )}
-            </div>
-          ) : (
-            // Athlete: Show today's schedule
-            todaysSchedule.length > 0 ? (
-              todaysSchedule.map((session, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-card/50 rounded-lg border border-border/50">
-                  <div>
-                    <p className="font-medium">{session.session_type || 'Training Session'}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {session.duration_minutes ? `${session.duration_minutes} minutes` : 'Duration not specified'}
-                    </p>
-                    {session.notes && (
-                      <p className="text-xs text-muted-foreground mt-1">{session.notes}</p>
-                    )}
-                  </div>
-                  <Badge variant="outline">Scheduled</Badge>
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-8">
-                <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">No sessions scheduled for today</p>
-                <p className="text-sm text-muted-foreground">Check your practice schedule or coach announcements</p>
-              </div>
-            )
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Quick Actions */}
+      {/* Quick Actions - Moved to top */}
       <div className="space-y-4">
         <h2 className="text-lg font-semibold">Quick Actions</h2>
         <div className="grid grid-cols-2 gap-4">
@@ -539,6 +416,97 @@ export const Dashboard = () => {
         </div>
       </div>
 
+      {/* Today's Schedule / Attendance */}
+      <Card className="sport-card">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Calendar className="h-5 w-5" />
+              <span>{isCoach ? 'Attendance' : "Today's Schedule"}</span>
+            </div>
+            {isCoach && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-[240px] justify-start text-left font-normal",
+                      !selectedDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarDays className="mr-2 h-4 w-4" />
+                    {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={setSelectedDate}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isCoach ? (
+            // Coach: Show attendance data with fixed height and scroll
+            <div className="h-64">
+              {attendanceData.length > 0 ? (
+                <div className="h-full overflow-y-auto space-y-2">
+                  {attendanceData.map((athlete, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-card/50 rounded-lg border border-border/50">
+                      <div>
+                        <p className="font-medium">{athlete.athlete_name}</p>
+                        {athlete.status === 'attended' && athlete.coach_rpe && (
+                          <p className="text-sm text-muted-foreground">Coach RPE: {athlete.coach_rpe}</p>
+                        )}
+                      </div>
+                      <Badge variant={athlete.status === 'attended' ? 'default' : 'secondary'}>
+                        {athlete.status === 'attended' ? 'Attended' : 'Absent'}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center">
+                  <Users className="h-12 w-12 text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">No athletes found for selected date</p>
+                  <p className="text-sm text-muted-foreground">Make sure you have athletes assigned to your batches</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            // Athlete: Show today's schedule
+            todaysSchedule.length > 0 ? (
+              todaysSchedule.map((session, index) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-card/50 rounded-lg border border-border/50">
+                  <div>
+                    <p className="font-medium">{session.session_type || 'Training Session'}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {session.duration_minutes ? `${session.duration_minutes} minutes` : 'Duration not specified'}
+                    </p>
+                    {session.notes && (
+                      <p className="text-xs text-muted-foreground mt-1">{session.notes}</p>
+                    )}
+                  </div>
+                  <Badge variant="outline">Scheduled</Badge>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8">
+                <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">No sessions scheduled for today</p>
+                <p className="text-sm text-muted-foreground">Check your practice schedule or coach announcements</p>
+              </div>
+            )
+          )}
+        </CardContent>
+      </Card>
+
       {/* Batch Management for Coaches */}
       {isCoach && (
         <Card className="sport-card">
@@ -632,6 +600,37 @@ export const Dashboard = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Analytics Stats - Moved below My Batches */}
+      <div className="grid grid-cols-2 gap-4">
+        <Card className="sport-card">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-3">
+              <div className="gradient-primary p-2 rounded-lg">
+                <Activity className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">This Week</p>
+                <p className="text-xl font-bold">{analytics.weekSessions} Sessions</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="sport-card">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-3">
+              <div className="gradient-secondary p-2 rounded-lg">
+                <TrendingUp className="h-5 w-5 text-accent-foreground" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Avg RPE</p>
+                <p className="text-xl font-bold">{analytics.avgRPE || 'N/A'}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Create Batch Dialog */}
       <Dialog open={showCreateBatch} onOpenChange={setShowCreateBatch}>
