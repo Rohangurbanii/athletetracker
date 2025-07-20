@@ -83,6 +83,46 @@ export const Tournaments = () => {
         }
       }
 
+      // If coach, exclude tournaments they have completed commenting on
+      if (isCoach && profile) {
+        const { data: coachData } = await supabase
+          .from('coaches')
+          .select('id')
+          .eq('profile_id', profile.id)
+          .single();
+
+        if (coachData) {
+          // Get batch athlete IDs for this coach
+          const { data: batchData } = await supabase
+            .from('batches')
+            .select('id')
+            .eq('coach_id', coachData.id);
+
+          const batchIds = batchData?.map(b => b.id) || [];
+
+          const { data: batchAthleteData } = await supabase
+            .from('batch_athletes')
+            .select('athlete_id')
+            .in('batch_id', batchIds);
+
+          const athleteIds = batchAthleteData?.map(ba => ba.athlete_id) || [];
+
+          // Get tournaments where coach has completed commenting
+          const { data: completedCommentsData } = await supabase
+            .from('tournament_results')
+            .select('tournament_id')
+            .not('coach_completed_at', 'is', null)
+            .in('athlete_id', athleteIds);
+
+          const completedTournamentIds = [...new Set((completedCommentsData || []).map(r => r.tournament_id))];
+
+          // Exclude completed tournaments from upcoming list
+          if (completedTournamentIds.length > 0) {
+            upcomingQuery = upcomingQuery.not('id', 'in', `(${completedTournamentIds.join(',')})`);
+          }
+        }
+      }
+
       const { data: upcomingData } = await upcomingQuery;
 
       // Fetch completed tournaments with results for the current user
