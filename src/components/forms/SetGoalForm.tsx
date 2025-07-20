@@ -65,7 +65,7 @@ export const SetGoalForm = () => {
           title: formData.title,
           description: `${formData.description}\n\nCategory: ${formData.category}`,
           target_date: formData.targetDate,
-          status: 'active',
+          status: 'pending',
           priority: 'medium',
           progress_percentage: 0
         });
