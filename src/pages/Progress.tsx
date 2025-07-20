@@ -132,6 +132,8 @@ export const Progress = () => {
         return;
       }
 
+      console.log('Fetching goals for athlete ID:', athleteId);
+
       // Get goals for this athlete
       const { data: goalsData, error: goalsError } = await supabase
         .from('goals')
@@ -139,10 +141,13 @@ export const Progress = () => {
         .eq('athlete_id', athleteId)
         .order('created_at', { ascending: false });
 
+      console.log('Goals query result:', { goalsData, goalsError });
+
       if (goalsError) {
         console.error('Error fetching goals:', goalsError);
         setGoals([]);
       } else {
+        console.log('Fetched goals:', goalsData);
         const transformedGoals = (goalsData || []).map(goal => ({
           id: goal.id,
           title: goal.title,
@@ -153,6 +158,7 @@ export const Progress = () => {
           createdDate: goal.created_at?.split('T')[0] || ''
         }));
         setGoals(transformedGoals);
+        console.log('Transformed goals:', transformedGoals);
       }
     } catch (error) {
       console.error('Error:', error);
