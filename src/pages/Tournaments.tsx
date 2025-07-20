@@ -46,13 +46,13 @@ export const Tournaments = () => {
       setLoading(true);
 
       // Fetch upcoming tournaments
-      const { data: upcomingData } = await supabase
+      let upcomingQuery = supabase
         .from('tournaments')
         .select('*')
         .gte('start_date', new Date().toISOString().split('T')[0])
         .order('start_date', { ascending: true });
 
-      // If athlete, check which tournaments they have submitted results for
+      // If athlete, exclude tournaments they have submitted results for
       if (isAthlete && profile) {
         const { data: athleteData } = await supabase
           .from('athletes')
@@ -67,6 +67,13 @@ export const Tournaments = () => {
             .eq('athlete_id', athleteData.id)
             .not('athlete_completed_at', 'is', null);
 
+          const completedTournamentIds = (resultsData || []).map(r => r.tournament_id);
+
+          // Exclude completed tournaments from upcoming list
+          if (completedTournamentIds.length > 0) {
+            upcomingQuery = upcomingQuery.not('id', 'in', `(${completedTournamentIds.join(',')})`);
+          }
+
           const resultsMap = (resultsData || []).reduce((acc, result) => {
             acc[result.tournament_id] = true;
             return acc;
@@ -75,6 +82,8 @@ export const Tournaments = () => {
           setAthleteResults(resultsMap);
         }
       }
+
+      const { data: upcomingData } = await upcomingQuery;
 
       // Fetch completed tournaments with results for the current user
       let completedData = [];
@@ -156,7 +165,10 @@ export const Tournaments = () => {
         .delete()
         .eq('id', resultId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Delete error:', error);
+        throw error;
+      }
       
       // Refresh tournaments to move back to upcoming
       await fetchTournaments();
@@ -297,18 +309,13 @@ export const Tournaments = () => {
                         Results
                       </Button>
                     )}
-                    {isCoach ? (
+                    {isCoach && (
                       <Button 
                         variant="outline"
                         onClick={() => setShowCommentsModal({ id: tournament.id, name: tournament.name })}
                       >
                         <Star className="h-4 w-4 mr-2" />
                         Comments
-                      </Button>
-                    ) : (
-                      <Button variant="outline">
-                        <Calendar className="h-4 w-4 mr-2" />
-                        Add to Calendar
                       </Button>
                     )}
                   </div>
