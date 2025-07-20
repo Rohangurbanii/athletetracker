@@ -335,9 +335,23 @@ export const Progress = () => {
 
   const updateProgress = async (goalId: string, newProgress: number) => {
     try {
+      const updateData = {
+        progress_percentage: newProgress,
+        // If setting to 100%, automatically mark as coach completed
+        ...(newProgress === 100 && {
+          coach_completed: true,
+          completed_by_coach_at: new Date().toISOString()
+        }),
+        // If setting to less than 100%, unmark coach completion
+        ...(newProgress < 100 && {
+          coach_completed: false,
+          completed_by_coach_at: null
+        })
+      };
+
       const { error } = await supabase
         .from('goals')
-        .update({ progress_percentage: newProgress })
+        .update(updateData)
         .eq('id', goalId);
 
       if (error) {
@@ -349,7 +363,12 @@ export const Progress = () => {
       setGoals(prevGoals => 
         prevGoals.map(goal => 
           goal.id === goalId 
-            ? { ...goal, progress: newProgress }
+            ? { 
+                ...goal, 
+                progress: newProgress,
+                coachCompleted: newProgress === 100 ? true : (newProgress < 100 ? false : goal.coachCompleted),
+                completedByCoachAt: newProgress === 100 ? new Date().toISOString() : (newProgress < 100 ? null : goal.completedByCoachAt)
+              }
             : goal
         )
       );
@@ -521,22 +540,22 @@ export const Progress = () => {
                   {/* For coaches: Clickable percentage buttons */}
                   {isCoach ? (
                     <div className="space-y-3">
-                      <div className="flex flex-wrap gap-1">
-                        {Array.from({ length: 21 }, (_, i) => i * 5).map((percentage) => (
-                          <Button
-                            key={percentage}
-                            size="sm"
-                            variant={goal.progress === percentage ? "default" : "outline"}
-                            className={`text-xs px-2 py-1 ${
-                              goal.progress === percentage 
-                                ? 'bg-primary text-primary-foreground' 
-                                : 'hover:bg-muted'
-                            }`}
-                            onClick={() => updateProgress(goal.id, percentage)}
-                          >
-                            {percentage}%
-                          </Button>
-                        ))}
+                       <div className="flex gap-2">
+                         {[0, 25, 50, 75, 100].map((percentage) => (
+                           <Button
+                             key={percentage}
+                             size="sm"
+                             variant={goal.progress === percentage ? "default" : "outline"}
+                             className={`text-sm px-4 py-2 ${
+                               goal.progress === percentage 
+                                 ? 'bg-primary text-primary-foreground' 
+                                 : 'hover:bg-muted'
+                             }`}
+                             onClick={() => updateProgress(goal.id, percentage)}
+                           >
+                             {percentage}%
+                           </Button>
+                         ))}
                       </div>
                       <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
                         <div 
