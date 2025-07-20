@@ -116,6 +116,8 @@ export const Tournaments = () => {
           .eq('profile_id', profile.id)
           .single();
 
+        console.log('Coach data:', coachData);
+
         if (coachData) {
           // First get batch athlete IDs for this coach
           const { data: batchData } = await supabase
@@ -124,6 +126,7 @@ export const Tournaments = () => {
             .eq('coach_id', coachData.id);
 
           const batchIds = batchData?.map(b => b.id) || [];
+          console.log('Batch IDs:', batchIds);
 
           const { data: batchAthleteData } = await supabase
             .from('batch_athletes')
@@ -131,6 +134,7 @@ export const Tournaments = () => {
             .in('batch_id', batchIds);
 
           const athleteIds = batchAthleteData?.map(ba => ba.athlete_id) || [];
+          console.log('Athlete IDs:', athleteIds);
 
           // Get all tournament results for coach's athletes
           const { data: allResults } = await supabase
@@ -138,10 +142,13 @@ export const Tournaments = () => {
             .select(`
               tournament_id,
               coach_completed_at,
+              athlete_completed_at,
               tournament:tournaments(*)
             `)
             .not('athlete_completed_at', 'is', null) // Only athletes who submitted results
             .in('athlete_id', athleteIds);
+
+          console.log('All results for coach athletes:', allResults);
 
           // Group by tournament and check if ALL athletes have coach comments
           const tournamentMap = new Map();
@@ -162,10 +169,14 @@ export const Tournaments = () => {
             }
           });
 
+          console.log('Tournament map:', Array.from(tournamentMap.entries()));
+
           // Only include tournaments where ALL athletes have been commented on
           completedData = Array.from(tournamentMap.values())
             .filter(item => item.total > 0 && item.completed === item.total)
             .map(item => ({ tournament: item.tournament }));
+
+          console.log('Completed tournaments for coach:', completedData);
         }
       }
 
