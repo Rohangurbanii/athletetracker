@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Calendar, Plus, Clock, Star } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Calendar, Plus, Clock, Star, Users, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -24,6 +25,8 @@ export const Practice = () => {
   const [selectedSession, setSelectedSession] = useState(null);
   const [selectedRpe, setSelectedRpe] = useState('');
   const [rpeLogs, setRpeLogs] = useState([]);
+  const [expandedSessions, setExpandedSessions] = useState(new Set());
+  const [coachRpeInputs, setCoachRpeInputs] = useState({});
 
   const fetchSessions = async () => {
       if (!profile) return;
@@ -309,6 +312,89 @@ export const Practice = () => {
     setRpeDialogOpen(true);
   };
 
+  const toggleSessionExpansion = (sessionId) => {
+    const newExpanded = new Set(expandedSessions);
+    if (newExpanded.has(sessionId)) {
+      newExpanded.delete(sessionId);
+    } else {
+      newExpanded.add(sessionId);
+    }
+    setExpandedSessions(newExpanded);
+  };
+
+  const handleCoachRpeChange = (sessionId, athleteId, value) => {
+    setCoachRpeInputs(prev => ({
+      ...prev,
+      [`${sessionId}-${athleteId}`]: value
+    }));
+  };
+
+  const submitCoachRpe = async (session, athleteId) => {
+    const rpeValue = coachRpeInputs[`${session.id}-${athleteId}`];
+    if (!rpeValue || !profile) return;
+
+    try {
+      // First, get or create the RPE log for this session and athlete
+      const { data: existingRpe } = await supabase
+        .from('rpe_logs')
+        .select('id')
+        .eq('athlete_id', athleteId)
+        .eq('log_date', selectedDate)
+        .eq('activity_type', session.originalSession?.session_type || 'Practice')
+        .like('notes', '%scheduled practice%')
+        .maybeSingle();
+
+      if (existingRpe) {
+        // Update existing RPE log with coach RPE
+        const { error: updateError } = await supabase
+          .from('rpe_logs')
+          .update({
+            coach_rpe: parseInt(rpeValue),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingRpe.id);
+
+        if (updateError) throw updateError;
+      } else {
+        // Create new RPE log with coach RPE
+        const { error: insertError } = await supabase
+          .from('rpe_logs')
+          .insert({
+            athlete_id: athleteId,
+            club_id: profile.club_id,
+            log_date: selectedDate,
+            coach_rpe: parseInt(rpeValue),
+            duration_minutes: session.originalSession?.duration_minutes || 0,
+            activity_type: session.originalSession?.session_type || 'Practice',
+            notes: `RPE for scheduled practice: ${session.originalSession?.notes || 'Practice session'}`
+          });
+
+        if (insertError) throw insertError;
+      }
+
+      toast({
+        title: "Coach RPE saved successfully!",
+        description: `RPE rating of ${rpeValue} has been recorded for this athlete.`,
+      });
+
+      // Clear the input
+      setCoachRpeInputs(prev => ({
+        ...prev,
+        [`${session.id}-${athleteId}`]: ''
+      }));
+
+      // Refresh sessions
+      await fetchSessions();
+    } catch (error) {
+      console.error('Error saving coach RPE:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to save coach RPE. Please try again.",
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -454,6 +540,8 @@ export const Practice = () => {
                       <p className="text-sm">{session.notes}</p>
                     </div>
                   )}
+                  
+                  {/* Athlete RPE Section for Athletes */}
                   {profile?.role === 'athlete' && (
                     <div className="flex space-x-2">
                       <Button 
@@ -464,6 +552,57 @@ export const Practice = () => {
                         <Star className="h-4 w-4 mr-2" />
                         Log RPE
                       </Button>
+                    </div>
+                  )}
+                  
+                  {/* Coach RPE Section for Coaches */}
+                  {profile?.role === 'coach' && session.originalSession && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => toggleSessionExpansion(session.id)}
+                          className="flex items-center space-x-2 bg-muted/50 hover:bg-muted/70"
+                        >
+                          <Users className="h-4 w-4" />
+                          <span>Athletes</span>
+                          <ChevronDown className={`h-4 w-4 transition-transform ${
+                            expandedSessions.has(session.id) ? 'rotate-180' : ''
+                          }`} />
+                        </Button>
+                      </div>
+                      
+                      {expandedSessions.has(session.id) && (
+                        <div className="space-y-2 p-3 bg-muted/30 rounded-lg border">
+                          <div className="flex items-center justify-between p-2 bg-card rounded-md">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-2 h-2 bg-primary rounded-full"></div>
+                              <span className="text-sm font-medium">{session.athlete}</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Input
+                                type="number"
+                                min="1"
+                                max="10"
+                                placeholder="RPE"
+                                className="w-16 h-8 text-center bg-background"
+                                value={coachRpeInputs[`${session.id}-${session.originalSession.athlete_id}`] || ''}
+                                onChange={(e) => handleCoachRpeChange(session.id, session.originalSession.athlete_id, e.target.value)}
+                              />
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 px-2 bg-primary/10 hover:bg-primary/20 border-primary/30"
+                                onClick={() => submitCoachRpe(session, session.originalSession.athlete_id)}
+                                disabled={!coachRpeInputs[`${session.id}-${session.originalSession.athlete_id}`]}
+                              >
+                                <Star className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

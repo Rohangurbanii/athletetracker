@@ -449,6 +449,7 @@ export type Database = {
           activity_type: string | null
           athlete_id: string
           club_id: string
+          coach_rpe: number | null
           created_at: string | null
           duration_minutes: number | null
           id: string
@@ -461,6 +462,7 @@ export type Database = {
           activity_type?: string | null
           athlete_id: string
           club_id: string
+          coach_rpe?: number | null
           created_at?: string | null
           duration_minutes?: number | null
           id?: string
@@ -473,6 +475,7 @@ export type Database = {
           activity_type?: string | null
           athlete_id?: string
           club_id?: string
+          coach_rpe?: number | null
           created_at?: string | null
           duration_minutes?: number | null
           id?: string
