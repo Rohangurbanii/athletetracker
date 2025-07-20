@@ -46,13 +46,13 @@ export const Tournaments = () => {
       setLoading(true);
 
       // Fetch upcoming tournaments
-      const { data: upcomingData } = await supabase
+      let upcomingQuery = supabase
         .from('tournaments')
         .select('*')
         .gte('start_date', new Date().toISOString().split('T')[0])
         .order('start_date', { ascending: true });
 
-      // If athlete, check which tournaments they have submitted results for
+      // If athlete, exclude tournaments they have already submitted results for
       if (isAthlete && profile) {
         const { data: athleteData } = await supabase
           .from('athletes')
@@ -61,11 +61,19 @@ export const Tournaments = () => {
           .single();
 
         if (athleteData) {
+          // Get tournament IDs where athlete has submitted results
           const { data: resultsData } = await supabase
             .from('tournament_results')
             .select('tournament_id')
             .eq('athlete_id', athleteData.id)
             .not('athlete_completed_at', 'is', null);
+
+          const completedTournamentIds = (resultsData || []).map(r => r.tournament_id);
+
+          // Exclude completed tournaments from upcoming list
+          if (completedTournamentIds.length > 0) {
+            upcomingQuery = upcomingQuery.not('id', 'in', `(${completedTournamentIds.join(',')})`);
+          }
 
           const resultsMap = (resultsData || []).reduce((acc, result) => {
             acc[result.tournament_id] = true;
@@ -75,6 +83,8 @@ export const Tournaments = () => {
           setAthleteResults(resultsMap);
         }
       }
+
+      const { data: upcomingData } = await upcomingQuery;
 
       // Fetch completed tournaments with results for the current user
       let completedData = [];
