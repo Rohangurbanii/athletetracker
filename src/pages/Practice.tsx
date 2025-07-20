@@ -193,7 +193,7 @@ export const Practice = () => {
                 type: session.session_type || 'Practice',
                 status: isCompleted ? 'completed' : 'scheduled',
                 notes: session.notes,
-                athlete: "batch a",
+                athlete: session.athletes?.profiles?.full_name || 'Unknown Athlete',
                 originalSession: session,
                 existingCoachRpe: existingRpeLog?.coach_rpe || null,
                 athleteRpe: existingRpeLog?.rpe_score || null
