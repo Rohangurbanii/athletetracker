@@ -167,7 +167,7 @@ export const Dashboard = () => {
         recentActivities.push({
           type: 'session',
           activity: `Completed ${sessionsData[0].activity_type?.toLowerCase() || 'training'} session`,
-          time: `${Math.abs(new Date().getTime() - new Date(sessionsData[0].log_date).getTime()) / (1000 * 60 * 60)} hours ago`,
+          time: `${Math.round(Math.abs(new Date().getTime() - new Date(sessionsData[0].log_date).getTime()) / (1000 * 60 * 60))} hours ago`,
           rpe: sessionsData[0].rpe_score
         });
       }
