@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Target, MessageSquare, CheckCircle, Clock, Plus, Calendar } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,12 +18,88 @@ export const Progress = () => {
   const [loading, setLoading] = useState(true);
   const [commentsLoading, setCommentsLoading] = useState(false);
 
-  useEffect(() => {
-    const fetchGoals = async () => {
-      if (!profile) return;
+  // Coach-specific state for athlete selection
+  const [batches, setBatches] = useState<any[]>([]);
+  const [selectedBatch, setSelectedBatch] = useState<string>("");
+  const [athletes, setAthletes] = useState<any[]>([]);
+  const [selectedAthlete, setSelectedAthlete] = useState<string>("");
+  const [coachDataLoading, setCoachDataLoading] = useState(false);
 
-      try {
-        // Get the athlete record for this profile
+  // Fetch batches for coaches
+  const fetchBatches = async () => {
+    if (profile?.role !== 'coach') return;
+    
+    setLoading(false); // Stop main loading for coaches
+    
+    const { data: coachData, error: coachError } = await supabase
+      .from('coaches')
+      .select('id')
+      .eq('profile_id', profile.id)
+      .single();
+
+    if (coachData) {
+      const { data: batchesData, error: batchesError } = await supabase
+        .from('batches')
+        .select('*')
+        .eq('coach_id', coachData.id);
+      
+      setBatches(batchesData || []);
+    }
+  };
+
+  // Fetch athletes in selected batch
+  const fetchAthletes = async (batchId: string) => {
+    try {
+      // Get athletes in the selected batch
+      const { data: batchAthleteIds } = await supabase
+        .from('batch_athletes')
+        .select('athlete_id')
+        .eq('batch_id', batchId);
+
+      const athleteIds = (batchAthleteIds || []).map(ba => ba.athlete_id);
+      
+      if (athleteIds.length === 0) {
+        setAthletes([]);
+        return;
+      }
+
+      const { data: athletes } = await supabase
+        .from('athletes')
+        .select(`
+          id,
+          profiles!athletes_profile_id_fkey (
+            id,
+            full_name
+          )
+        `)
+        .in('id', athleteIds);
+
+      const athletesList = (athletes || []).map(athlete => ({
+        id: athlete.id,
+        profile_id: athlete.profiles?.id,
+        name: athlete.profiles?.full_name || 'Unknown'
+      }));
+
+      setAthletes(athletesList);
+    } catch (error) {
+      console.error('Error fetching batch athletes:', error);
+      setAthletes([]);
+    }
+  };
+
+  const fetchGoals = async (targetAthleteId?: string) => {
+    if (!profile) return;
+
+    try {
+      if (targetAthleteId) {
+        setCoachDataLoading(true);
+      } else {
+        setLoading(true);
+      }
+
+      // Get athlete data based on user role
+      let athleteId = targetAthleteId;
+      if (!athleteId && profile?.role === 'athlete') {
         const { data: athleteData, error: athleteError } = await supabase
           .from('athletes')
           .select('id')
@@ -31,58 +108,71 @@ export const Progress = () => {
 
         if (athleteError) {
           console.error('Error fetching athlete:', athleteError);
-          setLoading(false);
+          if (targetAthleteId) {
+            setCoachDataLoading(false);
+          } else {
+            setLoading(false);
+          }
           return;
         }
 
-        if (!athleteData) {
-          console.log('No athlete record found');
-          setGoals([]);
-          setLoading(false);
-          return;
-        }
+        athleteId = athleteData?.id;
+      }
 
-        // Get goals for this athlete
-        const { data: goalsData, error: goalsError } = await supabase
-          .from('goals')
-          .select('*')
-          .eq('athlete_id', athleteData.id)
-          .order('created_at', { ascending: false });
-
-        if (goalsError) {
-          console.error('Error fetching goals:', goalsError);
-          setGoals([]);
-        } else {
-          const transformedGoals = (goalsData || []).map(goal => ({
-            id: goal.id,
-            title: goal.title,
-            description: goal.description,
-            status: goal.status === 'completed' ? 'completed' : 'in_progress',
-            targetDate: goal.target_date,
-            progress: goal.progress_percentage || 0,
-            createdDate: goal.created_at?.split('T')[0] || ''
-          }));
-          setGoals(transformedGoals);
-        }
-      } catch (error) {
-        console.error('Error:', error);
+      if (!athleteId) {
+        console.log('No athlete record found');
         setGoals([]);
-      } finally {
+        if (targetAthleteId) {
+          setCoachDataLoading(false);
+        } else {
+          setLoading(false);
+        }
+        return;
+      }
+
+      // Get goals for this athlete
+      const { data: goalsData, error: goalsError } = await supabase
+        .from('goals')
+        .select('*')
+        .eq('athlete_id', athleteId)
+        .order('created_at', { ascending: false });
+
+      if (goalsError) {
+        console.error('Error fetching goals:', goalsError);
+        setGoals([]);
+      } else {
+        const transformedGoals = (goalsData || []).map(goal => ({
+          id: goal.id,
+          title: goal.title,
+          description: goal.description,
+          status: goal.status === 'completed' ? 'completed' : 'in_progress',
+          targetDate: goal.target_date,
+          progress: goal.progress_percentage || 0,
+          createdDate: goal.created_at?.split('T')[0] || ''
+        }));
+        setGoals(transformedGoals);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      setGoals([]);
+    } finally {
+      if (targetAthleteId) {
+        setCoachDataLoading(false);
+      } else {
         setLoading(false);
       }
-    };
+    }
+  };
 
-    fetchGoals();
-  }, [profile]);
+  const fetchCoachComments = async (targetAthleteId?: string) => {
+    if (!profile || (isCoach && !targetAthleteId)) return; // Only load for athletes or coaches with selected athlete
 
-  useEffect(() => {
-    const fetchCoachComments = async () => {
-      if (!profile || isCoach) return; // Only load for athletes
+    try {
+      setCommentsLoading(true);
 
-      try {
-        setCommentsLoading(true);
-
-        // Get the athlete record for this profile
+      // Get athlete data based on user role
+      let athleteId = targetAthleteId;
+      if (!athleteId && profile?.role === 'athlete') {
         const { data: athleteData, error: athleteError } = await supabase
           .from('athletes')
           .select('id')
@@ -95,55 +185,92 @@ export const Progress = () => {
           return;
         }
 
-        // Get tournament results with coach comments for this athlete
-        const { data: commentsData, error: commentsError } = await supabase
-          .from('tournament_results')
-          .select(`
-            id,
-            coach_comments,
-            coach_completed_at,
-            position,
-            strong_points,
-            areas_of_improvement,
-            tournament:tournaments(name, start_date, location)
-          `)
-          .eq('athlete_id', athleteData.id)
-          .not('coach_comments', 'is', null)
-          .not('coach_comments', 'eq', '')
-          .order('coach_completed_at', { ascending: false });
-
-        if (commentsError) {
-          console.error('Error fetching coach comments:', commentsError);
-          setCoachComments([]);
-        } else {
-          setCoachComments(commentsData || []);
-        }
-      } catch (error) {
-        console.error('Error fetching coach comments:', error);
-        setCoachComments([]);
-      } finally {
-        setCommentsLoading(false);
+        athleteId = athleteData.id;
       }
-    };
 
-    if (activeTab === 'comments') {
-      fetchCoachComments();
+      if (!athleteId) {
+        setCoachComments([]);
+        return;
+      }
+
+      // Get tournament results with coach comments for this athlete
+      const { data: commentsData, error: commentsError } = await supabase
+        .from('tournament_results')
+        .select(`
+          id,
+          coach_comments,
+          coach_completed_at,
+          position,
+          strong_points,
+          areas_of_improvement,
+          tournament:tournaments(name, start_date, location)
+        `)
+        .eq('athlete_id', athleteId)
+        .not('coach_comments', 'is', null)
+        .not('coach_comments', 'eq', '')
+        .order('coach_completed_at', { ascending: false });
+
+      if (commentsError) {
+        console.error('Error fetching coach comments:', commentsError);
+        setCoachComments([]);
+      } else {
+        setCoachComments(commentsData || []);
+      }
+    } catch (error) {
+      console.error('Error fetching coach comments:', error);
+      setCoachComments([]);
+    } finally {
+      setCommentsLoading(false);
     }
-  }, [profile, isCoach, activeTab]);
+  };
+
+  // Effects and event handlers
+  useEffect(() => {
+    if (profile) {
+      if (profile.role === 'coach') {
+        fetchBatches();
+      } else {
+        fetchGoals();
+      }
+    }
+  }, [profile]);
+
+  useEffect(() => {
+    if (selectedBatch) {
+      fetchAthletes(selectedBatch);
+      setSelectedAthlete("");
+      setGoals([]);
+      setCoachComments([]);
+    }
+  }, [selectedBatch]);
+
+  useEffect(() => {
+    if (selectedAthlete) {
+      fetchGoals(selectedAthlete);
+      if (activeTab === 'comments') {
+        fetchCoachComments(selectedAthlete);
+      }
+    } else {
+      setGoals([]);
+      setCoachComments([]);
+    }
+  }, [selectedAthlete]);
+
+  useEffect(() => {
+    if (activeTab === 'comments') {
+      if (isCoach && selectedAthlete) {
+        fetchCoachComments(selectedAthlete);
+      } else if (!isCoach) {
+        fetchCoachComments();
+      }
+    }
+  }, [activeTab, selectedAthlete, isCoach]);
 
   const getStatusIcon = (status: string) => {
     return status === 'completed' ? (
       <CheckCircle className="h-4 w-4 text-green-500" />
     ) : (
       <Clock className="h-4 w-4 text-blue-500" />
-    );
-  };
-
-  const getTypeIcon = (type: string) => {
-    return type === 'tournament' ? (
-      <Target className="h-4 w-4 text-yellow-500" />
-    ) : (
-      <MessageSquare className="h-4 w-4 text-blue-500" />
     );
   };
 
@@ -168,33 +295,84 @@ export const Progress = () => {
         )}
       </div>
 
-      {/* Tab Navigation */}
-      <div className="flex space-x-1 bg-muted p-1 rounded-lg">
-        <button
-          onClick={() => setActiveTab('goals')}
-          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-            activeTab === 'goals'
-              ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          Goals Tracker
-        </button>
-        <button
-          onClick={() => setActiveTab('comments')}
-          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-            activeTab === 'comments'
-              ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          Coach Comments
-        </button>
-      </div>
+      {/* Coach Selection Section */}
+      {isCoach && (
+        <div className="space-y-4">
+          <div className="flex gap-4">
+            <Select value={selectedBatch} onValueChange={setSelectedBatch}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Select Batch" />
+              </SelectTrigger>
+              <SelectContent>
+                {batches.map((batch) => (
+                  <SelectItem key={batch.id} value={batch.id}>
+                    {batch.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-      {/* Goals Tab */}
-      {activeTab === 'goals' && (
-        loading ? (
+            <Select 
+              value={selectedAthlete} 
+              onValueChange={setSelectedAthlete}
+              disabled={!selectedBatch}
+            >
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Select Athlete" />
+              </SelectTrigger>
+              <SelectContent>
+                {athletes.map((athlete) => (
+                  <SelectItem key={athlete.id} value={athlete.id}>
+                    {athlete.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {!selectedAthlete && (
+            <div className="text-center py-8 text-muted-foreground">
+              Select a batch and athlete to view progress data
+            </div>
+          )}
+
+          {coachDataLoading && selectedAthlete && (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin w-6 h-6 border-4 border-primary border-t-transparent rounded-full"></div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab Navigation - Show for athletes or when coach has selected athlete */}
+      {((isCoach && selectedAthlete) || (!isCoach)) && (
+        <div className="flex space-x-1 bg-muted p-1 rounded-lg">
+          <button
+            onClick={() => setActiveTab('goals')}
+            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+              activeTab === 'goals'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Goals Tracker
+          </button>
+          <button
+            onClick={() => setActiveTab('comments')}
+            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+              activeTab === 'comments'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Coach Comments
+          </button>
+        </div>
+      )}
+
+      {/* Goals Tab - Show for athletes or when coach has selected athlete */}
+      {((isCoach && selectedAthlete) || (!isCoach)) && activeTab === 'goals' && (
+        (loading || coachDataLoading) ? (
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
           </div>
@@ -285,8 +463,8 @@ export const Progress = () => {
         )
       )}
 
-      {/* Comments Tab */}
-      {activeTab === 'comments' && (
+      {/* Comments Tab - Show for athletes or when coach has selected athlete */}
+      {((isCoach && selectedAthlete) || (!isCoach)) && activeTab === 'comments' && (
         <div className="space-y-4">
           <h2 className="text-lg font-semibold">Tournament Coach Feedback</h2>
           
@@ -324,7 +502,7 @@ export const Progress = () => {
                 <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No coach comments yet</h3>
                 <p className="text-muted-foreground">
-                  Coach feedback from tournaments will appear here after competitions
+                  {isCoach ? "This athlete hasn't received any tournament feedback yet" : "Coach feedback from tournaments will appear here after competitions"}
                 </p>
               </CardContent>
             </Card>
@@ -332,14 +510,14 @@ export const Progress = () => {
         </div>
       )}
 
-      {/* Empty States */}
-      {activeTab === 'goals' && !loading && goals.length === 0 && (
+      {/* Empty States for Goals */}
+      {((isCoach && selectedAthlete) || (!isCoach)) && activeTab === 'goals' && !loading && !coachDataLoading && goals.length === 0 && (
         <Card className="sport-card">
           <CardContent className="text-center py-12">
             <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">No goals set</h3>
             <p className="text-muted-foreground mb-4">
-              Start setting specific goals to track your development
+              {isCoach ? "This athlete hasn't set any goals yet" : "Start setting specific goals to track your development"}
             </p>
             {!isCoach && (
               <Button 
