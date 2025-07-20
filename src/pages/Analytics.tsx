@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TrendingUp, TrendingDown, Activity, Moon, Target } from "lucide-react";
+import { TrendingUp, TrendingDown, Activity, Moon, Target, BarChart3, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -370,88 +370,65 @@ export const Analytics = () => {
       {displayData ? (
         <>
           {/* Key Metrics Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Sleep Quality</CardTitle>
-                <Moon className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="text-2xl font-bold">{displayData.avgSleep}h</div>
-                  <p className="text-xs text-muted-foreground">
-                    {displayData.sleepTrend >= 0 ? (
-                      <span className="flex items-center gap-1">
-                        <TrendingUp className="h-3 w-3" />
-                        +{displayData.sleepTrend.toFixed(1)}h from yesterday
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1">
-                        <TrendingDown className="h-3 w-3" />
-                        {displayData.sleepTrend.toFixed(1)}h from yesterday
-                      </span>
-                    )}
-                  </p>
-                  <Badge 
-                    variant={getInsight('sleep', displayData.avgSleep, displayData.sleepTrend).variant}
-                    className="mt-2"
-                  >
-                    {getInsight('sleep', displayData.avgSleep, displayData.sleepTrend).text}
-                  </Badge>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="bg-card/50 backdrop-blur border-border/20 p-8">
+              <div className="flex items-start space-x-6">
+                <div className="w-16 h-16 bg-orange-500 rounded-2xl flex items-center justify-center">
+                  <Activity className="h-8 w-8 text-white" />
                 </div>
-              </CardContent>
+                <div className="flex-1">
+                  <p className="text-lg text-muted-foreground font-medium mb-2">This Week</p>
+                  <div className="flex items-baseline space-x-1">
+                    <span className="text-5xl font-bold text-foreground">{displayData.totalSessions}</span>
+                  </div>
+                  <p className="text-xl text-muted-foreground mt-2 font-medium">Sessions</p>
+                </div>
+              </div>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Training Load</CardTitle>
-                <Activity className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="text-2xl font-bold">{displayData.trainingLoad}</div>
-                  <p className="text-xs text-muted-foreground">
-                    RPE × Duration average
-                  </p>
-                  <Badge 
-                    variant={getInsight('load', displayData.trainingLoad, 0).variant}
-                    className="mt-2"
-                  >
-                    {getInsight('load', displayData.trainingLoad, 0).text}
-                  </Badge>
+            <Card className="bg-card/50 backdrop-blur border-border/20 p-8">
+              <div className="flex items-start space-x-6">
+                <div className="w-16 h-16 bg-blue-500 rounded-2xl flex items-center justify-center">
+                  <TrendingUp className="h-8 w-8 text-white" />
                 </div>
-              </CardContent>
+                <div className="flex-1">
+                  <p className="text-lg text-muted-foreground font-medium mb-2">Avg RPE</p>
+                  <div className="flex items-baseline space-x-1">
+                    <span className="text-5xl font-bold text-foreground">{displayData.avgRPE.toFixed(0)}</span>
+                  </div>
+                  <p className="text-xl text-muted-foreground mt-2 font-medium">out of 10</p>
+                </div>
+              </div>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">RPE Average</CardTitle>
-                <Target className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="text-2xl font-bold">{displayData.avgRPE}/10</div>
-                  <p className="text-xs text-muted-foreground">
-                    {displayData.rpeTrend >= 0 ? (
-                      <span className="flex items-center gap-1">
-                        <TrendingUp className="h-3 w-3" />
-                        +{displayData.rpeTrend.toFixed(1)} from yesterday
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1">
-                        <TrendingDown className="h-3 w-3" />
-                        {displayData.rpeTrend.toFixed(1)} from yesterday
-                      </span>
-                    )}
-                  </p>
-                  <Badge 
-                    variant={getInsight('rpe', displayData.avgRPE, displayData.rpeTrend).variant}
-                    className="mt-2"
-                  >
-                    {getInsight('rpe', displayData.avgRPE, displayData.rpeTrend).text}
-                  </Badge>
+            <Card className="bg-card/50 backdrop-blur border-border/20 p-8">
+              <div className="flex items-start space-x-6">
+                <div className="w-16 h-16 bg-green-500 rounded-2xl flex items-center justify-center">
+                  <Target className="h-8 w-8 text-white" />
                 </div>
-              </CardContent>
+                <div className="flex-1">
+                  <p className="text-lg text-muted-foreground font-medium mb-2">Training Load</p>
+                  <div className="flex items-baseline space-x-1">
+                    <span className="text-5xl font-bold text-foreground">{displayData.trainingLoad}</span>
+                  </div>
+                  <p className="text-xl text-muted-foreground mt-2 font-medium">Total Score</p>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="bg-card/50 backdrop-blur border-border/20 p-8">
+              <div className="flex items-start space-x-6">
+                <div className="w-16 h-16 bg-purple-500 rounded-2xl flex items-center justify-center">
+                  <BarChart3 className="h-8 w-8 text-white" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-lg text-muted-foreground font-medium mb-2">Sleep Quality</p>
+                  <div className="flex items-baseline space-x-1">
+                    <span className="text-5xl font-bold text-foreground">{displayData.avgSleep.toFixed(1)}</span>
+                  </div>
+                  <p className="text-xl text-muted-foreground mt-2 font-medium">Average Hours</p>
+                </div>
+              </div>
             </Card>
           </div>
 
