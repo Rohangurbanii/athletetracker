@@ -6,6 +6,7 @@ import { Trophy, Calendar, MapPin, Plus, Star } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
+import { AddTournamentForm } from '@/components/forms/AddTournamentForm';
 
 type Tournament = Database['public']['Tables']['tournaments']['Row'];
 type TournamentResult = Database['public']['Tables']['tournament_results']['Row'] & {
@@ -23,6 +24,7 @@ export const Tournaments = () => {
   const [upcomingTournaments, setUpcomingTournaments] = useState<UpcomingTournament[]>([]);
   const [completedTournaments, setCompletedTournaments] = useState<CompletedTournament[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAddForm, setShowAddForm] = useState(false);
 
   useEffect(() => {
     fetchTournaments();
@@ -253,9 +255,12 @@ export const Tournaments = () => {
             <p className="text-muted-foreground mb-4">
               Explore available tournaments and register for competitions
             </p>
-            <Button className="gradient-primary text-primary-foreground">
+            <Button 
+              className="gradient-primary text-primary-foreground"
+              onClick={() => setShowAddForm(true)}
+            >
               <Plus className="h-4 w-4 mr-2" />
-              Find Tournaments
+              Add Tournament
             </Button>
           </CardContent>
         </Card>
@@ -271,6 +276,14 @@ export const Tournaments = () => {
             </p>
           </CardContent>
         </Card>
+      )}
+
+      {/* Add Tournament Form */}
+      {showAddForm && (
+        <AddTournamentForm
+          onClose={() => setShowAddForm(false)}
+          onTournamentAdded={fetchTournaments}
+        />
       )}
     </div>
   );
