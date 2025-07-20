@@ -268,3 +268,5 @@ export const LogSessionForm = () => {
     </div>
   );
 };
+
+export default LogSessionForm;

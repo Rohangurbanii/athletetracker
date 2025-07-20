@@ -704,3 +704,5 @@ export const Progress = () => {
     </div>
   );
 };
+
+export default Progress;

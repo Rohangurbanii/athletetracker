@@ -293,3 +293,5 @@ export const LogSleepForm = () => {
     </div>
   );
 };
+
+export default LogSleepForm;

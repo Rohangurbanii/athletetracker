@@ -942,3 +942,5 @@ export const Practice = () => {
     </div>
   );
 };
+
+export default Practice;

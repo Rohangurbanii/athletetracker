@@ -415,3 +415,5 @@ export const Sleep = () => {
     </div>
   );
 };
+
+export default Sleep;

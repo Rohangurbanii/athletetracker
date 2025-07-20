@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,17 +7,31 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { AuthScreen } from "@/components/auth/AuthScreen";
 import { MobileLayout } from "@/components/layout/MobileLayout";
-import { Dashboard } from "@/pages/Dashboard";
-import { Practice } from "@/pages/Practice";
-import { Sleep } from "@/pages/Sleep";
-import { Tournaments } from "@/pages/Tournaments";
-import { Analytics } from "@/pages/Analytics";
-import { Progress } from "@/pages/Progress";
-import { LogSessionForm } from "@/components/forms/LogSessionForm";
-import { LogSleepForm } from "@/components/forms/LogSleepForm";
-import { SetGoalForm } from "@/components/forms/SetGoalForm";
-import { SchedulePracticeForm } from "@/components/forms/SchedulePracticeForm";
-import NotFound from "./pages/NotFound";
+
+// Lazy load pages for code splitting
+const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const Practice = lazy(() => import("@/pages/Practice"));
+const Sleep = lazy(() => import("@/pages/Sleep"));
+const Tournaments = lazy(() => import("@/pages/Tournaments"));
+const Analytics = lazy(() => import("@/pages/Analytics"));
+const Progress = lazy(() => import("@/pages/Progress"));
+const NotFound = lazy(() => import("@/pages/NotFound"));
+
+// Lazy load forms for code splitting
+const LogSessionForm = lazy(() => import("@/components/forms/LogSessionForm"));
+const LogSleepForm = lazy(() => import("@/components/forms/LogSleepForm"));
+const SetGoalForm = lazy(() => import("@/components/forms/SetGoalForm"));
+const SchedulePracticeForm = lazy(() => import("@/components/forms/SchedulePracticeForm"));
+
+// Loading component for Suspense fallback
+const LoadingSpinner = () => (
+  <div className="mobile-container flex items-center justify-center min-h-screen">
+    <div className="flex flex-col items-center space-y-4">
+      <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
+      <p className="text-muted-foreground">Loading...</p>
+    </div>
+  </div>
+);
 
 const queryClient = new QueryClient();
 
@@ -36,22 +51,24 @@ const ProtectedRoutes = () => {
   }
 
   return (
-    <Routes>
-      <Route path="/" element={<MobileLayout />}>
-        <Route index element={<Dashboard />} />
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="practice" element={<Practice />} />
-        <Route path="sleep" element={<Sleep />} />
-        <Route path="tournaments" element={<Tournaments />} />
-        <Route path="analytics" element={<Analytics />} />
-        <Route path="progress" element={<Progress />} />
-        <Route path="log-session" element={<LogSessionForm />} />
-        <Route path="log-sleep" element={<LogSleepForm />} />
-        <Route path="set-goal" element={<SetGoalForm />} />
-        <Route path="schedule-practice" element={<SchedulePracticeForm />} />
-      </Route>
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <Suspense fallback={<LoadingSpinner />}>
+      <Routes>
+        <Route path="/" element={<MobileLayout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="practice" element={<Practice />} />
+          <Route path="sleep" element={<Sleep />} />
+          <Route path="tournaments" element={<Tournaments />} />
+          <Route path="analytics" element={<Analytics />} />
+          <Route path="progress" element={<Progress />} />
+          <Route path="log-session" element={<LogSessionForm />} />
+          <Route path="log-sleep" element={<LogSleepForm />} />
+          <Route path="set-goal" element={<SetGoalForm />} />
+          <Route path="schedule-practice" element={<SchedulePracticeForm />} />
+        </Route>
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Suspense>
   );
 };
 

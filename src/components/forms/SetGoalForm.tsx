@@ -291,3 +291,5 @@ export const SetGoalForm = () => {
     </div>
   );
 };
+
+export default SetGoalForm;

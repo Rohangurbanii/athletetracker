@@ -317,3 +317,5 @@ export const SchedulePracticeForm = () => {
     </div>
   );
 };
+
+export default SchedulePracticeForm;

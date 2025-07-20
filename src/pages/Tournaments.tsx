@@ -608,3 +608,5 @@ export const Tournaments = () => {
     </div>
   );
 };
+
+export default Tournaments;

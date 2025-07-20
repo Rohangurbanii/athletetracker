@@ -598,3 +598,5 @@ export const Analytics = () => {
     </div>
   );
 };
+
+export default Analytics;
