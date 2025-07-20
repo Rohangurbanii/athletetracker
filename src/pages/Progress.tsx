@@ -464,37 +464,22 @@ export const Progress = () => {
           <div className="space-y-4">
             {goals.map((goal) => (
             <Card key={goal.id} className="sport-card">
-              <CardHeader className="pb-3">
+              <CardHeader className="pb-4">
                 <div className="flex items-start justify-between">
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-3">
                       {getStatusIcon(goal.status)}
-                      <CardTitle className="text-lg">{goal.title}</CardTitle>
+                      <CardTitle className="text-xl font-semibold">{goal.title}</CardTitle>
                     </div>
-                    <p className="text-sm text-muted-foreground">{goal.description}</p>
-                    
-                    {/* Coach completion status for athletes */}
-                    {!isCoach && goal.coachCompleted && (
-                      <div className="flex items-center gap-2 mt-2">
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                        <span className="text-sm text-green-600 font-medium">
-                          Marked complete by coach
-                        </span>
-                        {goal.completedByCoachAt && (
-                          <span className="text-xs text-muted-foreground">
-                            ({new Date(goal.completedByCoachAt).toLocaleDateString()})
-                          </span>
-                        )}
-                      </div>
-                    )}
+                    <p className="text-muted-foreground leading-relaxed">{goal.description}</p>
                   </div>
                   
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-2 ml-4">
                     <Badge 
                       className={
                         goal.status === 'completed' 
-                          ? 'bg-green-500/20 text-green-400' 
-                          : 'bg-blue-500/20 text-blue-400'
+                          ? 'bg-green-500/20 text-green-400 border-green-400/20' 
+                          : 'bg-blue-500/20 text-blue-400 border-blue-400/20'
                       }
                     >
                       {goal.status === 'completed' ? 'Completed' : 'In Progress'}
@@ -502,116 +487,126 @@ export const Progress = () => {
                     
                     {/* Coach completion badge */}
                     {isCoach && goal.coachCompleted && (
-                      <Badge className="bg-emerald-500/20 text-emerald-400 text-xs">
+                      <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-400/20 text-xs">
                         Coach Completed
                       </Badge>
                     )}
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {/* Interactive Progress Slider */}
-                  <div className="space-y-3">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Progress</span>
-                      <span className="font-medium">{goal.progress}%</span>
-                    </div>
-                     
-                     {/* For coaches: Clickable percentage buttons */}
-                     {isCoach ? (
-                       <div className="space-y-3">
-                         <div className="flex flex-wrap gap-1">
-                           {Array.from({ length: 21 }, (_, i) => i * 5).map((percentage) => (
-                             <Button
-                               key={percentage}
-                               size="sm"
-                               variant={goal.progress === percentage ? "default" : "outline"}
-                               className={`text-xs px-2 py-1 ${
-                                 goal.progress === percentage 
-                                   ? 'bg-primary text-primary-foreground' 
-                                   : 'hover:bg-muted'
-                               }`}
-                               onClick={() => updateProgress(goal.id, percentage)}
-                             >
-                               {percentage}%
-                             </Button>
-                           ))}
-                         </div>
-                         <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                           <div 
-                             className="gradient-primary h-full rounded-full transition-all duration-300"
-                             style={{ width: `${goal.progress}%` }}
-                           />
-                         </div>
-                       </div>
-                     ) : (
-                       /* For athletes: Static progress bar */
-                       <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
-                         <div 
-                           className="gradient-primary h-full rounded-full transition-all duration-500 ease-out"
-                           style={{ width: `${goal.progress}%` }}
-                         />
-                       </div>
-                     )}
-                  </div>
-
-                  {/* Goal Details */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="stat-card">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Target Date</span>
-                        <span className="text-sm font-medium">
-                          {new Date(goal.targetDate).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="stat-card">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Created</span>
-                        <span className="text-sm font-medium">
-                          {new Date(goal.createdDate).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex space-x-2">
-                    {isCoach ? (
-                      <>
-                        <Button 
-                          variant="outline" 
-                          className="flex-1"
-                          disabled
-                        >
-                          Update Progress
-                        </Button>
-                        <Button 
-                          onClick={() => toggleCoachCompletion(goal.id, goal.coachCompleted)}
-                          className={`transition-all duration-200 ${
-                            goal.coachCompleted 
-                              ? 'bg-green-500 hover:bg-green-600 text-white' 
-                              : 'bg-primary hover:bg-primary/90 text-primary-foreground'
-                          }`}
-                        >
-                          {goal.coachCompleted ? (
-                            <>
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                              Complete
-                            </>
-                          ) : (
-                            'Mark Complete'
-                          )}
-                        </Button>
-                      </>
-                    ) : goal.status === 'in_progress' && (
-                      <Button variant="outline" className="flex-1">
-                        View Details
-                      </Button>
+                
+                {/* Coach completion status for athletes */}
+                {!isCoach && goal.coachCompleted && (
+                  <div className="flex items-center gap-2 mt-3 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <span className="text-sm text-green-600 font-medium">
+                      Marked complete by coach
+                    </span>
+                    {goal.completedByCoachAt && (
+                      <span className="text-xs text-green-600/70 ml-auto">
+                        {new Date(goal.completedByCoachAt).toLocaleDateString()}
+                      </span>
                     )}
                   </div>
+                )}
+              </CardHeader>
+              
+              <CardContent className="space-y-6">
+                {/* Progress Section */}
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-muted-foreground">Progress</span>
+                    <span className="text-lg font-bold text-foreground">{goal.progress}%</span>
+                  </div>
+                  
+                  {/* For coaches: Clickable percentage buttons */}
+                  {isCoach ? (
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap gap-1">
+                        {Array.from({ length: 21 }, (_, i) => i * 5).map((percentage) => (
+                          <Button
+                            key={percentage}
+                            size="sm"
+                            variant={goal.progress === percentage ? "default" : "outline"}
+                            className={`text-xs px-2 py-1 ${
+                              goal.progress === percentage 
+                                ? 'bg-primary text-primary-foreground' 
+                                : 'hover:bg-muted'
+                            }`}
+                            onClick={() => updateProgress(goal.id, percentage)}
+                          >
+                            {percentage}%
+                          </Button>
+                        ))}
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                        <div 
+                          className="gradient-primary h-full rounded-full transition-all duration-300"
+                          style={{ width: `${goal.progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    /* For athletes: Static progress bar */
+                    <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
+                      <div 
+                        className="gradient-primary h-full rounded-full transition-all duration-500 ease-out"
+                        style={{ width: `${goal.progress}%` }}
+                      />
+                    </div>
+                  )}
                 </div>
+
+                {/* Goal Details Grid */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Target Date</span>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">
+                        {new Date(goal.targetDate).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Created</span>
+                    <div className="flex items-center gap-2">
+                      <Plus className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">
+                        {new Date(goal.createdDate).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions - Only for coaches */}
+                {isCoach && (
+                  <div className="flex space-x-3 pt-2">
+                    <Button 
+                      variant="outline" 
+                      className="flex-1"
+                      disabled
+                    >
+                      Update Progress
+                    </Button>
+                    <Button 
+                      onClick={() => toggleCoachCompletion(goal.id, goal.coachCompleted)}
+                      className={`transition-all duration-200 ${
+                        goal.coachCompleted 
+                          ? 'bg-green-500 hover:bg-green-600 text-white' 
+                          : 'bg-primary hover:bg-primary/90 text-primary-foreground'
+                      }`}
+                    >
+                      {goal.coachCompleted ? (
+                        <>
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Complete
+                        </>
+                      ) : (
+                        'Mark Complete'
+                      )}
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
