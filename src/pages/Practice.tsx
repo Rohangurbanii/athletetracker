@@ -520,15 +520,6 @@ export const Practice = () => {
                     )}
                   </div>
                 </div>
-                <Badge 
-                  className={
-                    session.status === 'completed' ? 'bg-green-500/20 text-green-400' : 
-                    session.status === 'scheduled' ? 'bg-blue-500/20 text-blue-400' :
-                    'bg-gray-500/20 text-gray-400'
-                  }
-                >
-                  {session.status}
-                </Badge>
               </div>
             </CardHeader>
             <CardContent>
