@@ -27,7 +27,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-export const Dashboard = memo(() => {
+const Dashboard = memo(() => {
   const { profile, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();

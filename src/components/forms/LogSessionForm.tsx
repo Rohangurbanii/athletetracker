@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
-export const LogSessionForm = memo(() => {
+const LogSessionForm = memo(() => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { profile } = useAuth();

@@ -6,7 +6,7 @@ import { TrendingUp, TrendingDown, Activity, Moon, Target, BarChart3, Calendar, 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
-export const Analytics = memo(() => {
+const Analytics = memo(() => {
   const { profile } = useAuth();
   const [analyticsData, setAnalyticsData] = useState<any>(null);
   const [loading, setLoading] = useState(true);

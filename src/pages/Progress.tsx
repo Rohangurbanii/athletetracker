@@ -8,7 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 
-export const Progress = memo(() => {
+const Progress = memo(() => {
   const { profile } = useAuth();
   const navigate = useNavigate();
   const isCoach = profile?.role === 'coach';
