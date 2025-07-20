@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
 import { Target, MessageSquare, CheckCircle, Clock, Plus, Calendar } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -286,12 +287,16 @@ export const Progress = () => {
 
   const toggleCoachCompletion = async (goalId: string, currentStatus: boolean) => {
     try {
+      const updateData = {
+        coach_completed: !currentStatus,
+        completed_by_coach_at: !currentStatus ? new Date().toISOString() : null,
+        // If marking as complete, set progress to 100%
+        ...((!currentStatus) && { progress_percentage: 100 })
+      };
+
       const { error } = await supabase
         .from('goals')
-        .update({
-          coach_completed: !currentStatus,
-          completed_by_coach_at: !currentStatus ? new Date().toISOString() : null
-        })
+        .update(updateData)
         .eq('id', goalId);
 
       if (error) {
@@ -306,13 +311,40 @@ export const Progress = () => {
             ? { 
                 ...goal, 
                 coachCompleted: !currentStatus,
-                completedByCoachAt: !currentStatus ? new Date().toISOString() : null
+                completedByCoachAt: !currentStatus ? new Date().toISOString() : null,
+                // If marking as complete, set progress to 100%
+                progress: !currentStatus ? 100 : goal.progress
               }
             : goal
         )
       );
     } catch (error) {
       console.error('Error toggling coach completion:', error);
+    }
+  };
+
+  const updateProgress = async (goalId: string, newProgress: number) => {
+    try {
+      const { error } = await supabase
+        .from('goals')
+        .update({ progress_percentage: newProgress })
+        .eq('id', goalId);
+
+      if (error) {
+        console.error('Error updating goal progress:', error);
+        return;
+      }
+
+      // Update local state
+      setGoals(prevGoals => 
+        prevGoals.map(goal => 
+          goal.id === goalId 
+            ? { ...goal, progress: newProgress }
+            : goal
+        )
+      );
+    } catch (error) {
+      console.error('Error updating progress:', error);
     }
   };
 
@@ -469,18 +501,42 @@ export const Progress = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {/* Progress Bar */}
-                  <div className="space-y-2">
+                  {/* Interactive Progress Slider */}
+                  <div className="space-y-3">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Progress</span>
                       <span className="font-medium">{goal.progress}%</span>
                     </div>
-                    <div className="w-full bg-muted rounded-full h-2">
-                      <div 
-                        className="gradient-primary h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${goal.progress}%` }}
-                      />
-                    </div>
+                    
+                    {/* For coaches: Interactive slider */}
+                    {isCoach ? (
+                      <div className="space-y-2">
+                        <Slider
+                          value={[goal.progress]}
+                          onValueChange={(values) => updateProgress(goal.id, values[0])}
+                          max={100}
+                          min={0}
+                          step={5}
+                          className="w-full cursor-pointer"
+                          disabled={goal.coachCompleted} // Disable if already marked complete
+                        />
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>0%</span>
+                          <span>25%</span>
+                          <span>50%</span>
+                          <span>75%</span>
+                          <span>100%</span>
+                        </div>
+                      </div>
+                    ) : (
+                      /* For athletes: Static progress bar */
+                      <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
+                        <div 
+                          className="gradient-primary h-full rounded-full transition-all duration-500 ease-out"
+                          style={{ width: `${goal.progress}%` }}
+                        />
+                      </div>
+                    )}
                   </div>
 
                   {/* Goal Details */}
