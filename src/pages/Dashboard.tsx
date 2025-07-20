@@ -5,7 +5,11 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Trophy, Moon, Target, Activity, TrendingUp, Users, ChevronDown, Plus, Edit, Trash2, BarChart3 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { Calendar, Trophy, Moon, Target, Activity, TrendingUp, Users, ChevronDown, Plus, Edit, Trash2, BarChart3, CalendarDays } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -41,6 +45,8 @@ export const Dashboard = () => {
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [batchToDelete, setBatchToDelete] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [attendanceData, setAttendanceData] = useState([]);
 
   const fetchData = useCallback(async () => {
     if (!profile) return; // Guard clause inside useEffect instead
@@ -100,6 +106,9 @@ export const Dashboard = () => {
           );
 
           setBatches(batchesWithAthletes);
+
+          // Fetch attendance data for coaches
+          await fetchAttendanceData(coach.id, selectedDate);
         }
         return; // Coach dashboard doesn't need athlete analytics
       }
@@ -188,7 +197,90 @@ export const Dashboard = () => {
     } catch (error) {
       console.error('Error fetching analytics:', error);
     }
-  }, [profile]);
+  }, [profile, selectedDate]);
+
+  const fetchAttendanceData = async (coachId, date) => {
+    try {
+      const dateStr = format(date, 'yyyy-MM-dd');
+      
+      // First get all batches for this coach
+      const { data: coachBatches } = await supabase
+        .from('batches')
+        .select('id')
+        .eq('coach_id', coachId);
+
+      if (!coachBatches || coachBatches.length === 0) {
+        setAttendanceData([]);
+        return;
+      }
+
+      const batchIds = coachBatches.map(b => b.id);
+
+      // Get all athletes in coach's batches
+      const { data: batchAthletes } = await supabase
+        .from('batch_athletes')
+        .select('athlete_id')
+        .in('batch_id', batchIds);
+
+      if (!batchAthletes || batchAthletes.length === 0) {
+        setAttendanceData([]);
+        return;
+      }
+
+      const athleteIds = batchAthletes.map(ba => ba.athlete_id);
+
+      // Get athlete details
+      const { data: athletes } = await supabase
+        .from('athletes')
+        .select(`
+          id,
+          profiles!inner(
+            full_name
+          )
+        `)
+        .in('id', athleteIds);
+
+      // Get RPE logs for selected date from coach
+      const { data: rpeData } = await supabase
+        .from('rpe_logs')
+        .select('athlete_id, coach_rpe')
+        .eq('log_date', dateStr)
+        .not('coach_rpe', 'is', null);
+
+      // Create attendance array
+      const attendance = (athletes || []).map(athlete => {
+        const hasCoachRpe = rpeData?.find(rpe => rpe.athlete_id === athlete.id);
+        return {
+          athlete_id: athlete.id,
+          athlete_name: athlete.profiles?.full_name || 'Unknown',
+          status: hasCoachRpe ? 'attended' : 'absent',
+          coach_rpe: hasCoachRpe?.coach_rpe
+        };
+      });
+
+      setAttendanceData(attendance);
+    } catch (error) {
+      console.error('Error fetching attendance data:', error);
+    }
+  };
+
+  // Refresh attendance data when date changes
+  useEffect(() => {
+    if (profile?.role === 'coach') {
+      const getCoachData = async () => {
+        const { data: coach } = await supabase
+          .from('coaches')
+          .select('id')
+          .eq('profile_id', profile.id)
+          .single();
+        
+        if (coach) {
+          await fetchAttendanceData(coach.id, selectedDate);
+        }
+      };
+      getCoachData();
+    }
+  }, [selectedDate, profile]);
 
 
   useEffect(() => {
@@ -260,36 +352,91 @@ export const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Today's Schedule */}
+      {/* Today's Schedule / Attendance */}
       <Card className="sport-card">
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Calendar className="h-5 w-5" />
-            <span>Today's Schedule</span>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Calendar className="h-5 w-5" />
+              <span>{isCoach ? 'Attendance' : "Today's Schedule"}</span>
+            </div>
+            {isCoach && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-[240px] justify-start text-left font-normal",
+                      !selectedDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarDays className="mr-2 h-4 w-4" />
+                    {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={setSelectedDate}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {todaysSchedule.length > 0 ? (
-            todaysSchedule.map((session, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-card/50 rounded-lg border border-border/50">
-                <div>
-                  <p className="font-medium">{session.session_type || 'Training Session'}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {session.duration_minutes ? `${session.duration_minutes} minutes` : 'Duration not specified'}
-                  </p>
-                  {session.notes && (
-                    <p className="text-xs text-muted-foreground mt-1">{session.notes}</p>
-                  )}
-                </div>
-                <Badge variant="outline">Scheduled</Badge>
+          {isCoach ? (
+            // Coach: Show attendance data
+            attendanceData.length > 0 ? (
+              <div className="space-y-2">
+                {attendanceData.map((athlete, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-card/50 rounded-lg border border-border/50">
+                    <div>
+                      <p className="font-medium">{athlete.athlete_name}</p>
+                      {athlete.status === 'attended' && athlete.coach_rpe && (
+                        <p className="text-sm text-muted-foreground">Coach RPE: {athlete.coach_rpe}</p>
+                      )}
+                    </div>
+                    <Badge variant={athlete.status === 'attended' ? 'default' : 'secondary'}>
+                      {athlete.status === 'attended' ? 'Attended' : 'Absent'}
+                    </Badge>
+                  </div>
+                ))}
               </div>
-            ))
+            ) : (
+              <div className="text-center py-8">
+                <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">No athletes found for selected date</p>
+                <p className="text-sm text-muted-foreground">Make sure you have athletes assigned to your batches</p>
+              </div>
+            )
           ) : (
-            <div className="text-center py-8">
-              <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">No sessions scheduled for today</p>
-              <p className="text-sm text-muted-foreground">Check your practice schedule or coach announcements</p>
-            </div>
+            // Athlete: Show today's schedule
+            todaysSchedule.length > 0 ? (
+              todaysSchedule.map((session, index) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-card/50 rounded-lg border border-border/50">
+                  <div>
+                    <p className="font-medium">{session.session_type || 'Training Session'}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {session.duration_minutes ? `${session.duration_minutes} minutes` : 'Duration not specified'}
+                    </p>
+                    {session.notes && (
+                      <p className="text-xs text-muted-foreground mt-1">{session.notes}</p>
+                    )}
+                  </div>
+                  <Badge variant="outline">Scheduled</Badge>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8">
+                <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">No sessions scheduled for today</p>
+                <p className="text-sm text-muted-foreground">Check your practice schedule or coach announcements</p>
+              </div>
+            )
           )}
         </CardContent>
       </Card>
