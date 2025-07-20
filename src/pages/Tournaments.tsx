@@ -373,9 +373,6 @@ export const Tournaments = () => {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {tournament.location && (
-                    <p className="text-sm text-muted-foreground mb-4">Location: {tournament.location}</p>
-                  )}
                   <div className="flex space-x-2">
                     {isAthlete ? (
                       <ParticipationDropdown tournamentId={tournament.id} />
