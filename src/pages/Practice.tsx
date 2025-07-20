@@ -161,7 +161,7 @@ export const Practice = () => {
                   profile_id, 
                   profiles!inner(full_name)
                 ),
-                batches!inner(name)
+                batches(name)
               `)
               .eq('coach_id', coach.id)
               .eq('session_date', selectedDate)
@@ -202,7 +202,7 @@ export const Practice = () => {
                 type: session.session_type || 'Practice',
                 status: isCompleted ? 'completed' : 'scheduled',
                 notes: session.notes,
-                athlete: (session.batches as any)?.name || 'Unknown Batch',
+                athlete: (session.batches as any)?.name || (session.athletes as any)?.profiles?.full_name || 'Unknown',
                 originalSession: session,
                 existingCoachRpe: existingRpeLog?.coach_rpe || null,
                 athleteRpe: existingRpeLog?.rpe_score || null
