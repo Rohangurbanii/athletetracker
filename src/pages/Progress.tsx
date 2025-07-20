@@ -524,14 +524,17 @@ export const Progress = () => {
                       <div className="space-y-2">
                         <Slider
                           value={[goal.progress]}
-                          onValueChange={(values) => updateProgress(goal.id, values[0])}
+                          onValueChange={(values) => {
+                            console.log('Slider value changed:', values[0]);
+                            updateProgress(goal.id, values[0]);
+                          }}
                           max={100}
                           min={0}
                           step={5}
                           className="w-full cursor-pointer"
-                          disabled={goal.coachCompleted} // Disable if already marked complete
+                          disabled={false} // Always enable the slider for coaches
                         />
-                        <div className="flex justify-between text-xs text-muted-foreground">
+                        <div className="flex justify-between text-xs text-muted-foreground pointer-events-none">
                           <span>0%</span>
                           <span>25%</span>
                           <span>50%</span>
