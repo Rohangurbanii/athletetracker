@@ -152,24 +152,21 @@ export const Practice = () => {
             .maybeSingle();
 
           if (coach) {
-            const { data: coachPractices } = await supabase
+            const { data: coachPractices, error: practicesError } = await supabase
               .from('practice_sessions')
               .select(`
                 *, 
                 athletes!inner(
                   id, 
                   profile_id, 
-                  profiles!inner(full_name),
-                  batch_athletes!inner(
-                    batch_id,
-                    batches!inner(name)
-                  )
+                  profiles!inner(full_name)
                 )
               `)
               .eq('coach_id', coach.id)
               .eq('session_date', selectedDate)
               .order('created_at', { ascending: false });
 
+            console.log('Coach practices query error:', practicesError);
             console.log('Coach practices fetched:', coachPractices);
 
             // Get existing RPE logs for these sessions (both athlete and coach RPE)
@@ -183,6 +180,27 @@ export const Practice = () => {
               .eq('log_date', selectedDate);
 
             console.log('Existing RPE logs:', existingRpeLogs);
+
+            // Get batch information separately for each athlete
+            let athleteBatchMap: Record<string, string> = {};
+            if (coachPractices && coachPractices.length > 0) {
+              const athleteIds = coachPractices.map(session => session.athlete_id);
+              const { data: batchInfo } = await supabase
+                .from('batch_athletes')
+                .select('athlete_id, batches!inner(name)')
+                .in('athlete_id', athleteIds);
+              
+              console.log('Batch info:', batchInfo);
+              
+              // Create a map of athlete_id to batch name (taking first batch if multiple)
+              batchInfo?.forEach(item => {
+                if (!athleteBatchMap[item.athlete_id]) {
+                  athleteBatchMap[item.athlete_id] = (item.batches as any)?.name || 'Unknown Batch';
+                }
+              });
+              
+              console.log('Athlete batch map:', athleteBatchMap);
+            }
 
             const coachTransformed = (coachPractices || []).map(session => {
               const existingRpeLog = existingRpeLogs?.find(log => 
@@ -204,7 +222,7 @@ export const Practice = () => {
                 type: session.session_type || 'Practice',
                 status: isCompleted ? 'completed' : 'scheduled',
                 notes: session.notes,
-                athlete: (session.athletes as any)?.batch_athletes?.[0]?.batches?.name || 'Unknown Batch',
+                athlete: athleteBatchMap[session.athlete_id] || (session.athletes as any)?.profiles?.full_name || 'Unknown',
                 originalSession: session,
                 existingCoachRpe: existingRpeLog?.coach_rpe || null,
                 athleteRpe: existingRpeLog?.rpe_score || null
