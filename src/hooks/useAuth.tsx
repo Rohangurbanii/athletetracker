@@ -100,13 +100,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signUp = async (email: string, password: string, fullName: string, role: 'coach' | 'athlete', clubId: string) => {
     try {
+      // Input sanitization
+      const sanitizedEmail = email.trim().toLowerCase();
+      const sanitizedFullName = fullName.trim().replace(/[<>]/g, '');
+      
+      // Rate limiting check
+      const rateLimitKey = `signup_${sanitizedEmail}`;
+      const lastAttempt = localStorage.getItem(rateLimitKey);
+      if (lastAttempt && Date.now() - parseInt(lastAttempt) < 60000) {
+        throw new Error('Too many signup attempts. Please wait a minute.');
+      }
+      localStorage.setItem(rateLimitKey, Date.now().toString());
+
       const { error } = await supabase.auth.signUp({
-        email,
+        email: sanitizedEmail,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/`,
           data: {
-            full_name: fullName,
+            full_name: sanitizedFullName,
             role: role,
             club_id: clubId,
           },
@@ -162,12 +174,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
+      // Input sanitization
+      const sanitizedEmail = email.trim().toLowerCase();
+      
+      // Rate limiting check
+      const rateLimitKey = `signin_${sanitizedEmail}`;
+      const attempts = parseInt(localStorage.getItem(`${rateLimitKey}_attempts`) || '0');
+      const lastAttempt = localStorage.getItem(rateLimitKey);
+      
+      if (lastAttempt && Date.now() - parseInt(lastAttempt) < 60000 && attempts >= 5) {
+        throw new Error('Too many failed login attempts. Please wait a minute.');
+      }
+
       const { error } = await supabase.auth.signInWithPassword({
-        email,
+        email: sanitizedEmail,
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        // Track failed attempts
+        localStorage.setItem(`${rateLimitKey}_attempts`, (attempts + 1).toString());
+        localStorage.setItem(rateLimitKey, Date.now().toString());
+        throw error;
+      }
+
+      // Clear failed attempts on successful login
+      localStorage.removeItem(`${rateLimitKey}_attempts`);
+      localStorage.removeItem(rateLimitKey);
 
       toast({
         title: "Welcome back!",

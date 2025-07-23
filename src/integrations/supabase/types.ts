@@ -841,14 +841,7 @@ export type Database = {
       }
     }
     Views: {
-      security_dashboard: {
-        Row: {
-          count: number | null
-          metric: string | null
-          time_period: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       cleanup_expired_data: {
@@ -862,6 +855,14 @@ export type Database = {
       get_current_user_club_id: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_security_dashboard: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          metric: string
+          count: number
+          time_period: string
+        }[]
       }
       log_security_event: {
         Args: {

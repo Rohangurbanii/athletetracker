@@ -13,5 +13,21 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
-  }
+    detectSessionInUrl: true,
+    flowType: 'pkce', // Use PKCE flow for enhanced security
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'sports-management-app',
+    },
+  },
+  // Secure configuration
+  db: {
+    schema: 'public',
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10, // Rate limit realtime events
+    },
+  },
 });
