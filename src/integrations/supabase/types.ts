@@ -878,6 +878,10 @@ export type Database = {
         Args: { input: string }
         Returns: string
       }
+      validate_content_text: {
+        Args: { input: string; max_length: number }
+        Returns: boolean
+      }
       validate_email: {
         Args: { email: string }
         Returns: boolean
