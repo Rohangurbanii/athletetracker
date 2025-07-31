@@ -161,6 +161,13 @@ function toast({ ...props }: Toast) {
     },
   })
 
+  // Handle custom duration
+  if (props.duration && props.duration !== Infinity) {
+    setTimeout(() => {
+      dismiss()
+    }, props.duration)
+  }
+
   return {
     id: id,
     dismiss,
