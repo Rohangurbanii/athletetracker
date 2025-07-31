@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { sanitizeInput, isValidEmail, isStrongPassword, checkRateLimit, clearSensitiveData } from '@/utils/security';
 
 interface Profile {
   id: string;
@@ -100,9 +101,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signUp = async (email: string, password: string, fullName: string, role: 'coach' | 'athlete', clubId: string) => {
     try {
-      // Basic input sanitization (less aggressive)
-      const sanitizedEmail = email.trim().toLowerCase();
-      const sanitizedFullName = fullName.trim();
+      // Rate limiting check
+      if (!checkRateLimit(`signup_${email}`, 3, 300000)) { // 3 attempts per 5 minutes
+        throw new Error('Too many signup attempts. Please try again later.');
+      }
+
+      // Input validation and sanitization
+      const sanitizedEmail = sanitizeInput(email.trim().toLowerCase());
+      const sanitizedFullName = sanitizeInput(fullName.trim());
+
+      if (!isValidEmail(sanitizedEmail)) {
+        throw new Error('Please enter a valid email address.');
+      }
+
+      const passwordCheck = isStrongPassword(password);
+      if (!passwordCheck.isValid) {
+        throw new Error(passwordCheck.message);
+      }
 
       const { error } = await supabase.auth.signUp({
         email: sanitizedEmail,
@@ -135,15 +150,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signUpAdmin = async (email: string, password: string, fullName: string, clubName: string) => {
     try {
+      // Rate limiting check
+      if (!checkRateLimit(`signup_admin_${email}`, 3, 300000)) {
+        throw new Error('Too many signup attempts. Please try again later.');
+      }
+
+      // Input validation and sanitization
+      const sanitizedEmail = sanitizeInput(email.trim().toLowerCase());
+      const sanitizedFullName = sanitizeInput(fullName.trim());
+      const sanitizedClubName = sanitizeInput(clubName.trim());
+
+      if (!isValidEmail(sanitizedEmail)) {
+        throw new Error('Please enter a valid email address.');
+      }
+
+      const passwordCheck = isStrongPassword(password);
+      if (!passwordCheck.isValid) {
+        throw new Error(passwordCheck.message);
+      }
+
       const { error } = await supabase.auth.signUp({
-        email,
+        email: sanitizedEmail,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/`,
           data: {
-            full_name: fullName,
+            full_name: sanitizedFullName,
             role: 'admin',
-            club_name: clubName,
+            club_name: sanitizedClubName,
           },
         },
       });
@@ -166,8 +200,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
-      // Basic input sanitization
-      const sanitizedEmail = email.trim().toLowerCase();
+      // Rate limiting check
+      if (!checkRateLimit(`signin_${email}`, 5, 900000)) { // 5 attempts per 15 minutes
+        throw new Error('Too many login attempts. Please try again later.');
+      }
+
+      // Input validation and sanitization
+      const sanitizedEmail = sanitizeInput(email.trim().toLowerCase());
+
+      if (!isValidEmail(sanitizedEmail)) {
+        throw new Error('Please enter a valid email address.');
+      }
 
       const { error } = await supabase.auth.signInWithPassword({
         email: sanitizedEmail,
@@ -192,6 +235,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     try {
+      // Clear sensitive data before signing out
+      clearSensitiveData();
+      
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
 

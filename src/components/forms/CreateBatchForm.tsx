@@ -11,10 +11,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { Users, Loader2 } from "lucide-react";
+import { sanitizeInput, containsSQLInjection } from "@/utils/security";
 
 const createBatchSchema = z.object({
-  name: z.string().min(1, "Batch name is required"),
-  description: z.string().optional(),
+  name: z.string()
+    .min(1, "Batch name is required")
+    .max(100, "Batch name must be less than 100 characters")
+    .refine((val) => !containsSQLInjection(val), "Invalid characters detected"),
+  description: z.string()
+    .optional()
+    .refine((val) => !val || (!containsSQLInjection(val) && val.length <= 500), "Invalid characters detected or description too long"),
   athleteIds: z.array(z.string()).min(1, "At least one athlete must be selected"),
 });
 
@@ -92,6 +98,32 @@ export const CreateBatchForm = ({ onSuccess, onCancel }: CreateBatchFormProps) =
     try {
       setLoading(true);
 
+      // Sanitize inputs before processing
+      const sanitizedData = {
+        name: sanitizeInput(data.name.trim()),
+        description: data.description ? sanitizeInput(data.description.trim()) : null,
+        athleteIds: data.athleteIds
+      };
+
+      // Additional security validation
+      if (containsSQLInjection(sanitizedData.name)) {
+        toast({
+          title: "Error",
+          description: "Invalid characters in batch name",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (sanitizedData.description && containsSQLInjection(sanitizedData.description)) {
+        toast({
+          title: "Error", 
+          description: "Invalid characters in description",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Get current user's coach record
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) {
@@ -133,12 +165,12 @@ export const CreateBatchForm = ({ onSuccess, onCancel }: CreateBatchFormProps) =
         return;
       }
 
-      // Create the batch
+      // Create the batch with sanitized data
       const { data: batch, error: batchError } = await supabase
         .from("batches")
         .insert({
-          name: data.name,
-          description: data.description,
+          name: sanitizedData.name,
+          description: sanitizedData.description,
           coach_id: coach.id,
           club_id: profile.club_id,
         })
@@ -156,7 +188,7 @@ export const CreateBatchForm = ({ onSuccess, onCancel }: CreateBatchFormProps) =
       }
 
       // Add athletes to the batch
-      const batchAthletes = data.athleteIds.map(athleteId => ({
+      const batchAthletes = sanitizedData.athleteIds.map(athleteId => ({
         batch_id: batch.id,
         athlete_id: athleteId,
       }));
@@ -177,7 +209,7 @@ export const CreateBatchForm = ({ onSuccess, onCancel }: CreateBatchFormProps) =
 
       toast({
         title: "Success",
-        description: `Batch "${data.name}" created successfully!`,
+        description: `Batch "${sanitizedData.name}" created successfully!`,
       });
 
       form.reset();
@@ -186,7 +218,7 @@ export const CreateBatchForm = ({ onSuccess, onCancel }: CreateBatchFormProps) =
       console.error("Error creating batch:", error);
       toast({
         title: "Error",
-        description: "An unexpected error occurred",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
         variant: "destructive",
       });
     } finally {

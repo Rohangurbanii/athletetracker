@@ -854,6 +854,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_auth_rate_limit: {
+        Args: {
+          user_identifier: string
+          action_type: string
+          max_attempts?: number
+          time_window?: unknown
+        }
+        Returns: boolean
+      }
       cleanup_expired_data: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -888,12 +897,20 @@ export type Database = {
         Args: { input: string }
         Returns: string
       }
+      update_user_role: {
+        Args: { target_user_id: string; new_role: string }
+        Returns: undefined
+      }
       validate_content_text: {
         Args: { input: string; max_length: number }
         Returns: boolean
       }
       validate_email: {
         Args: { email: string }
+        Returns: boolean
+      }
+      validate_password_strength: {
+        Args: { password: string }
         Returns: boolean
       }
     }
