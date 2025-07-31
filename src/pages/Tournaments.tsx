@@ -73,6 +73,49 @@ export const Tournaments = () => {
       if (isAthlete) {
         // Athletes only see future tournaments
         upcomingQuery = upcomingQuery.gte('start_date', new Date().toISOString().split('T')[0]);
+        
+        // Get athlete ID to filter athlete-created tournaments
+        const { data: athleteData } = await supabase
+          .from('athletes')
+          .select('id')
+          .eq('profile_id', profile.id)
+          .single();
+
+        if (athleteData) {
+          // Athletes see club tournaments OR their own created tournaments
+          upcomingQuery = upcomingQuery.or(`created_by_athlete_id.is.null,created_by_athlete_id.eq.${athleteData.id}`);
+        }
+      } else if (isCoach) {
+        // Get coach's athletes to see their tournaments
+        const { data: coachData } = await supabase
+          .from('coaches')
+          .select('id')
+          .eq('profile_id', profile.id)
+          .single();
+
+        if (coachData) {
+          const { data: batchData } = await supabase
+            .from('batches')
+            .select('id')
+            .eq('coach_id', coachData.id);
+
+          const batchIds = batchData?.map(b => b.id) || [];
+
+          const { data: batchAthleteData } = await supabase
+            .from('batch_athletes')
+            .select('athlete_id')
+            .in('batch_id', batchIds);
+
+          const athleteIds = batchAthleteData?.map(ba => ba.athlete_id) || [];
+
+          if (athleteIds.length > 0) {
+            // Coaches see club tournaments OR tournaments created by their athletes
+            upcomingQuery = upcomingQuery.or(`created_by_athlete_id.is.null,created_by_athlete_id.in.(${athleteIds.join(',')})`);
+          } else {
+            // If coach has no athletes, only show club tournaments
+            upcomingQuery = upcomingQuery.is('created_by_athlete_id', null);
+          }
+        }
       }
       
       upcomingQuery = upcomingQuery.order('start_date', { ascending: true });

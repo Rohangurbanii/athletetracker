@@ -763,6 +763,7 @@ export type Database = {
         Row: {
           club_id: string | null
           created_at: string | null
+          created_by_athlete_id: string | null
           description: string | null
           end_date: string | null
           id: string
@@ -774,6 +775,7 @@ export type Database = {
         Insert: {
           club_id?: string | null
           created_at?: string | null
+          created_by_athlete_id?: string | null
           description?: string | null
           end_date?: string | null
           id?: string
@@ -785,6 +787,7 @@ export type Database = {
         Update: {
           club_id?: string | null
           created_at?: string | null
+          created_by_athlete_id?: string | null
           description?: string | null
           end_date?: string | null
           id?: string
@@ -799,6 +802,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournaments_created_by_athlete_id_fkey"
+            columns: ["created_by_athlete_id"]
+            isOneToOne: false
+            referencedRelation: "athletes"
             referencedColumns: ["id"]
           },
         ]

@@ -30,6 +30,17 @@ export const AddTournamentForm = ({ onClose, onTournamentAdded }: AddTournamentF
 
     setIsSubmitting(true);
     try {
+      // If athlete, get their athlete ID first
+      let athleteId = null;
+      if (profile.role === 'athlete') {
+        const { data: athleteData } = await supabase
+          .from('athletes')
+          .select('id')
+          .eq('profile_id', profile.id)
+          .single();
+        athleteId = athleteData?.id;
+      }
+
       const { error } = await supabase
         .from('tournaments')
         .insert([
@@ -39,7 +50,8 @@ export const AddTournamentForm = ({ onClose, onTournamentAdded }: AddTournamentF
             start_date: formData.startDate,
             end_date: formData.endDate || formData.startDate,
             description: formData.description,
-            club_id: profile.club_id
+            club_id: profile.club_id,
+            created_by_athlete_id: athleteId
           }
         ]);
 
