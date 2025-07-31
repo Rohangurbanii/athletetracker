@@ -64,12 +64,18 @@ export const Tournaments = () => {
     try {
       setLoading(true);
 
-      // Fetch upcoming tournaments
+      // For coaches, we need to show tournaments they can still comment on, regardless of date
+      // For athletes, only show future tournaments
       let upcomingQuery = supabase
         .from('tournaments')
-        .select('*')
-        .gte('start_date', new Date().toISOString().split('T')[0])
-        .order('start_date', { ascending: true });
+        .select('*');
+
+      if (isAthlete) {
+        // Athletes only see future tournaments
+        upcomingQuery = upcomingQuery.gte('start_date', new Date().toISOString().split('T')[0]);
+      }
+      
+      upcomingQuery = upcomingQuery.order('start_date', { ascending: true });
 
       // If athlete, exclude tournaments they have submitted results for
       if (isAthlete && profile) {
