@@ -136,7 +136,8 @@ export const TournamentCommentsModal = ({
 
       toast({
         title: "Success",
-        description: "Comments submitted successfully"
+        description: "Comments submitted successfully",
+        duration: 4000
       });
 
       onCommentsCompleted();
