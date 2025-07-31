@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Calendar, MapPin, Plus, Star, Users } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Trophy, Calendar, MapPin, Plus, Star, Users, User } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
@@ -15,10 +16,25 @@ import { TournamentCommentsModal } from '@/components/forms/TournamentCommentsMo
 type Tournament = Database['public']['Tables']['tournaments']['Row'];
 type TournamentResult = Database['public']['Tables']['tournament_results']['Row'] & {
   tournament: Tournament;
+  athlete?: {
+    id: string;
+    profile: {
+      full_name: string;
+    };
+  };
 };
 
 type UpcomingTournament = Tournament;
 type CompletedTournament = TournamentResult;
+
+type CompletedTournamentWithAthletes = {
+  tournament: Tournament;
+  athletes: Array<{
+    id: string;
+    name: string;
+    result: TournamentResult;
+  }>;
+};
 
 export const Tournaments = () => {
   const { profile } = useAuth();
@@ -28,6 +44,9 @@ export const Tournaments = () => {
   const [activeTab, setActiveTab] = useState<'upcoming' | 'completed'>('upcoming');
   const [upcomingTournaments, setUpcomingTournaments] = useState<UpcomingTournament[]>([]);
   const [completedTournaments, setCompletedTournaments] = useState<CompletedTournament[]>([]);
+  const [completedTournamentsWithAthletes, setCompletedTournamentsWithAthletes] = useState<CompletedTournamentWithAthletes[]>([]);
+  const [selectedCompletedTournament, setSelectedCompletedTournament] = useState<string>('');
+  const [selectedAthlete, setSelectedAthlete] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectedTournament, setSelectedTournament] = useState<{ id: string; name: string } | null>(null);
@@ -149,7 +168,7 @@ export const Tournaments = () => {
           completedData = data || [];
         }
       } else if (isCoach) {
-        // For coaches, get tournaments where they have completed commenting (simple approach like athletes)
+        // For coaches, get tournaments with athlete details where they have completed commenting
         const { data: coachData } = await supabase
           .from('coaches')
           .select('id')
@@ -172,18 +191,48 @@ export const Tournaments = () => {
 
           const athleteIds = batchAthleteData?.map(ba => ba.athlete_id) || [];
 
-          // Simple approach: get tournaments where coach has completed at least one comment
+          // Get tournaments with detailed athlete and profile information
           const { data } = await supabase
             .from('tournament_results')
             .select(`
               *,
-              tournament:tournaments(*)
+              tournament:tournaments(*),
+              athlete:athletes(
+                id,
+                profile:profiles(
+                  id,
+                  full_name
+                )
+              )
             `)
             .not('coach_completed_at', 'is', null)
             .in('athlete_id', athleteIds)
             .order('created_at', { ascending: false });
 
-          // Get unique tournaments (in case multiple athletes from same tournament)
+          // Group results by tournament
+          const tournamentsWithAthletes: CompletedTournamentWithAthletes[] = [];
+          const tournamentMap = new Map<string, CompletedTournamentWithAthletes>();
+
+          data?.forEach(result => {
+            const tournamentId = result.tournament.id;
+            if (!tournamentMap.has(tournamentId)) {
+              tournamentMap.set(tournamentId, {
+                tournament: result.tournament,
+                athletes: []
+              });
+            }
+            
+            const tournamentData = tournamentMap.get(tournamentId)!;
+            tournamentData.athletes.push({
+              id: result.athlete.id,
+              name: result.athlete.profile.full_name,
+              result: result
+            });
+          });
+
+          setCompletedTournamentsWithAthletes(Array.from(tournamentMap.values()));
+
+          // For backward compatibility with existing logic, keep the old format too
           const uniqueTournaments = Array.from(
             new Map(data?.map(item => [item.tournament.id, item]) || []).values()
           );
@@ -439,7 +488,189 @@ export const Tournaments = () => {
                 </Card>
               ))}
             </div>
+          ) : isCoach ? (
+            <div className="space-y-6">
+              {/* Tournament and Athlete Selection for Coaches */}
+              <Card className="sport-card">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">Select Tournament & Athlete</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Choose a completed tournament and athlete to view detailed stats and comments
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Tournament Dropdown */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Tournament</label>
+                      <Select 
+                        value={selectedCompletedTournament} 
+                        onValueChange={(value) => {
+                          setSelectedCompletedTournament(value);
+                          setSelectedAthlete(''); // Reset athlete selection
+                        }}
+                      >
+                        <SelectTrigger className="bg-background border border-border">
+                          <SelectValue placeholder="Select a tournament" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background border border-border z-50">
+                          {completedTournamentsWithAthletes.map((tournament) => (
+                            <SelectItem key={tournament.tournament.id} value={tournament.tournament.id}>
+                              {tournament.tournament.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Athlete Dropdown */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Athlete</label>
+                      <Select 
+                        value={selectedAthlete} 
+                        onValueChange={setSelectedAthlete}
+                        disabled={!selectedCompletedTournament}
+                      >
+                        <SelectTrigger className="bg-background border border-border">
+                          <SelectValue placeholder="Select an athlete" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background border border-border z-50">
+                          {selectedCompletedTournament && 
+                            completedTournamentsWithAthletes
+                              .find(t => t.tournament.id === selectedCompletedTournament)
+                              ?.athletes.map((athlete) => (
+                                <SelectItem key={athlete.id} value={athlete.id}>
+                                  <div className="flex items-center">
+                                    <User className="h-4 w-4 mr-2" />
+                                    {athlete.name}
+                                  </div>
+                                </SelectItem>
+                              ))
+                          }
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Selected Athlete Stats */}
+              {selectedCompletedTournament && selectedAthlete && (() => {
+                const tournament = completedTournamentsWithAthletes.find(t => t.tournament.id === selectedCompletedTournament);
+                const athlete = tournament?.athletes.find(a => a.id === selectedAthlete);
+                const result = athlete?.result;
+
+                if (!result || !tournament) return null;
+
+                return (
+                  <Card className="sport-card">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-2">
+                          <CardTitle className="text-lg">{tournament.tournament.name}</CardTitle>
+                          <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                            <span className="flex items-center">
+                              <Calendar className="h-4 w-4 mr-1" />
+                              {new Date(tournament.tournament.start_date).toLocaleDateString()}
+                            </span>
+                            {tournament.tournament.location && (
+                              <span className="flex items-center">
+                                <MapPin className="h-4 w-4 mr-1" />
+                                {tournament.tournament.location}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <User className="h-4 w-4" />
+                            <span className="font-medium">{athlete.name}</span>
+                          </div>
+                        </div>
+                        <Badge className="bg-yellow-500/20 text-yellow-400">
+                          <Trophy className="h-3 w-3 mr-1" />
+                          {result.result}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {/* Tournament Stats */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {result.position && (
+                            <div className="stat-card">
+                              <p className="text-sm text-muted-foreground mb-2">Position</p>
+                              <p className="text-sm font-semibold">{result.position}</p>
+                            </div>
+                          )}
+                          
+                          {result.rank && (
+                            <div className="stat-card">
+                              <p className="text-sm text-muted-foreground mb-2">Rank</p>
+                              <p className="text-sm font-semibold">#{result.rank}</p>
+                            </div>
+                          )}
+                          
+                          {result.points_scored && (
+                            <div className="stat-card">
+                              <p className="text-sm text-muted-foreground mb-2">Points Scored</p>
+                              <p className="text-sm font-semibold">{result.points_scored}</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {result.strong_points && (
+                          <div className="stat-card">
+                            <p className="text-sm text-green-400 mb-2 font-semibold">Strong Points</p>
+                            <p className="text-sm">{result.strong_points}</p>
+                          </div>
+                        )}
+                        
+                        {result.areas_of_improvement && (
+                          <div className="stat-card">
+                            <p className="text-sm text-orange-400 mb-2 font-semibold">Areas of Improvement</p>
+                            <p className="text-sm">{result.areas_of_improvement}</p>
+                          </div>
+                        )}
+                        
+                        {result.coach_comments && (
+                          <div className="stat-card">
+                            <p className="text-sm text-blue-400 mb-2 font-semibold">Coach Comments</p>
+                            <p className="text-sm">{result.coach_comments}</p>
+                          </div>
+                        )}
+
+                        {result.notes && (
+                          <div className="stat-card">
+                            <p className="text-sm text-muted-foreground mb-2 font-semibold">Notes</p>
+                            <p className="text-sm">{result.notes}</p>
+                          </div>
+                        )}
+                        
+                        {/* Action Buttons */}
+                        <div className="pt-4 border-t flex space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setShowCommentsModal({ id: tournament.tournament.id, name: tournament.tournament.name })}
+                          >
+                            <Star className="h-4 w-4 mr-2" />
+                            Edit Comments
+                          </Button>
+                          <Button 
+                            variant="destructive" 
+                            size="sm"
+                            onClick={() => deleteCoachComments(tournament.tournament.id)}
+                          >
+                            Delete Comments
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })()}
+            </div>
           ) : (
+            /* Athletes view - unchanged */
             completedTournaments.map((result) => (
               <Card key={result.id} className="sport-card">
                 <CardHeader className="pb-3">
@@ -496,46 +727,23 @@ export const Tournaments = () => {
                     )}
                     
                     {/* Edit Results Button for Athletes in Completed Tab */}
-                    {isAthlete && (
-                      <div className="pt-4 border-t flex space-x-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => setShowResultsForm({ id: result.tournament.id, name: result.tournament.name })}
-                        >
-                          <Trophy className="h-4 w-4 mr-2" />
-                          Edit Results
-                        </Button>
-                        <Button 
-                          variant="destructive" 
-                          size="sm"
-                          onClick={() => deleteResult(result.id)}
-                        >
-                          Delete Results
-                        </Button>
-                      </div>
-                    )}
-
-                    {/* Edit Comments Button for Coaches in Completed Tab */}
-                    {isCoach && (
-                      <div className="pt-4 border-t flex space-x-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => setShowCommentsModal({ id: result.tournament.id, name: result.tournament.name })}
-                        >
-                          <Star className="h-4 w-4 mr-2" />
-                          Edit Comments
-                        </Button>
-                        <Button 
-                          variant="destructive" 
-                          size="sm"
-                          onClick={() => deleteCoachComments(result.tournament.id)}
-                        >
-                          Delete Comments
-                        </Button>
-                      </div>
-                    )}
+                    <div className="pt-4 border-t flex space-x-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setShowResultsForm({ id: result.tournament.id, name: result.tournament.name })}
+                      >
+                        <Trophy className="h-4 w-4 mr-2" />
+                        Edit Results
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        size="sm"
+                        onClick={() => deleteResult(result.id)}
+                      >
+                        Delete Results
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
