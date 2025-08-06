@@ -7,13 +7,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
-import { useClubs } from '@/hooks/useClubs';
+import { supabase } from '@/integrations/supabase/client';
 import { Dumbbell, Trophy, Users, Shield } from 'lucide-react';
 
 export const AuthScreen = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { signIn, signUp, signUpAdmin } = useAuth();
-  const { clubs, loading: clubsLoading, refetch: refetchClubs } = useClubs();
 
   const [signInForm, setSignInForm] = useState({
     email: '',
@@ -25,7 +24,7 @@ export const AuthScreen = () => {
     password: '',
     fullName: '',
     role: 'athlete' as 'coach' | 'athlete',
-    clubId: '',
+    clubCode: '',
   });
 
   const [adminSignUpForm, setAdminSignUpForm] = useState({
@@ -49,11 +48,18 @@ export const AuthScreen = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!signUpForm.clubId) return;
+    if (!signUpForm.clubCode.trim()) return;
     
     setIsLoading(true);
     try {
-      await signUp(signUpForm.email, signUpForm.password, signUpForm.fullName, signUpForm.role, signUpForm.clubId);
+      // Get club ID from club code
+      const { data: clubId, error: clubError } = await supabase.rpc('get_club_by_code', { code: signUpForm.clubCode });
+      
+      if (clubError || !clubId) {
+        throw new Error('Invalid club code. Please check and try again.');
+      }
+      
+      await signUp(signUpForm.email, signUpForm.password, signUpForm.fullName, signUpForm.role, clubId);
     } catch (error) {
       // Error handled in useAuth
     } finally {
@@ -66,17 +72,13 @@ export const AuthScreen = () => {
     setIsLoading(true);
     try {
       await signUpAdmin(adminSignUpForm.email, adminSignUpForm.password, adminSignUpForm.fullName, adminSignUpForm.clubName);
-      // Refresh clubs list after successful admin signup
-      setTimeout(() => {
-        refetchClubs();
-      }, 1000); // Small delay to ensure the trigger has processed
     } catch (error) {
       // Error handled in useAuth
     } finally {
       setIsLoading(false);
     }
   };
-  console.log(clubs)
+  
   return (
     <div className="mobile-container flex items-center justify-center min-h-screen p-4">
       <div className="w-full max-w-md space-y-6">
@@ -185,35 +187,22 @@ export const AuthScreen = () => {
                     />
                   </div>
                   
-                  {/* Club Selection */}
+                  {/* Club Code Input */}
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="club-select">Select Club</Label>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={refetchClubs}
-                        disabled={clubsLoading}
-                      >
-                        {clubsLoading ? 'Loading...' : 'Refresh'}
-                      </Button>
-                    </div>
-                    <Select 
-                      value={signUpForm.clubId} 
-                      onValueChange={(value) => setSignUpForm({ ...signUpForm, clubId: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={clubsLoading ? "Loading clubs..." : "Choose a club"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {clubs.map((club) => (
-                          <SelectItem key={club.id} value={club.id}>
-                            {club.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label htmlFor="club-code">Club Code</Label>
+                    <Input
+                      id="club-code"
+                      type="text"
+                      placeholder="Enter club code (e.g., ABC123)"
+                      value={signUpForm.clubCode}
+                      onChange={(e) => setSignUpForm({ ...signUpForm, clubCode: e.target.value.toUpperCase() })}
+                      maxLength={6}
+                      className="font-mono text-center text-lg tracking-wider"
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Ask your club admin for the 6-character club code
+                    </p>
                   </div>
                   
                   {/* Role Selection */}
@@ -246,7 +235,7 @@ export const AuthScreen = () => {
                   <Button 
                     type="submit" 
                     className="w-full gradient-primary text-primary-foreground font-semibold"
-                    disabled={isLoading || !signUpForm.clubId || clubsLoading}
+                    disabled={isLoading || !signUpForm.clubCode.trim()}
                   >
                     {isLoading ? 'Joining Club...' : 'Join Club'}
                   </Button>

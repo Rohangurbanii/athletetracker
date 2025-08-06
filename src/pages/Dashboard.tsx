@@ -15,6 +15,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { CreateBatchForm } from '@/components/forms/CreateBatchForm';
 import { EditBatchForm } from '@/components/forms/EditBatchForm';
+import { ClubCodeDisplay } from '@/components/ui/club-code-display';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -312,12 +313,19 @@ export const Dashboard = () => {
     <div className="space-y-6">
       {/* Welcome Section */}
       <div className="space-y-2">
-        <h1 className="text-2xl font-bold">
-          Welcome back, {profile.full_name || 'Champion'}!
-        </h1>
-        <p className="text-muted-foreground">
-          {isCoach ? 'Ready to guide your athletes to success?' : "Let's crush today's goals!"}
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">
+              Welcome back, {profile.full_name || 'Champion'}!
+            </h1>
+            <p className="text-muted-foreground">
+              {isCoach ? 'Ready to guide your athletes to success?' : "Let's crush today's goals!"}
+            </p>
+          </div>
+          {profile.role === 'admin' && profile.club_id && (
+            <ClubCodeDisplay clubId={profile.club_id} />
+          )}
+        </div>
       </div>
 
       {/* Quick Actions - Moved to top */}

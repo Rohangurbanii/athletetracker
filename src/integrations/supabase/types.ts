@@ -212,6 +212,7 @@ export type Database = {
       clubs: {
         Row: {
           admin_id: string | null
+          club_code: string | null
           created_at: string | null
           description: string | null
           id: string
@@ -220,6 +221,7 @@ export type Database = {
         }
         Insert: {
           admin_id?: string | null
+          club_code?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -228,6 +230,7 @@ export type Database = {
         }
         Update: {
           admin_id?: string | null
+          club_code?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -870,6 +873,14 @@ export type Database = {
       emergency_lockdown: {
         Args: { lockdown_reason: string }
         Returns: undefined
+      }
+      generate_club_code: {
+        Args: { club_uuid: string }
+        Returns: string
+      }
+      get_club_by_code: {
+        Args: { code: string }
+        Returns: string
       }
       get_current_user_club_id: {
         Args: Record<PropertyKey, never>
