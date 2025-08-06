@@ -13,7 +13,6 @@ const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Practice = lazy(() => import("@/pages/Practice"));
 const Sleep = lazy(() => import("@/pages/Sleep"));
 const Tournaments = lazy(() => import("@/pages/Tournaments"));
-const Analytics = lazy(() => import("@/pages/Analytics"));
 const Progress = lazy(() => import("@/pages/Progress"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
@@ -59,7 +58,6 @@ const ProtectedRoutes = () => {
           <Route path="practice" element={<Practice />} />
           <Route path="sleep" element={<Sleep />} />
           <Route path="tournaments" element={<Tournaments />} />
-          <Route path="analytics" element={<Analytics />} />
           <Route path="progress" element={<Progress />} />
           <Route path="log-session" element={<LogSessionForm />} />
           <Route path="log-sleep" element={<LogSleepForm />} />

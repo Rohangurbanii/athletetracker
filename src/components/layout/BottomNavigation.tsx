@@ -7,7 +7,6 @@ const navigationItems = [
   { href: '/practice', icon: Calendar, label: 'Practice' },
   { href: '/sleep', icon: Moon, label: 'Sleep' },
   { href: '/tournaments', icon: Trophy, label: 'Tournaments' },
-  { href: '/analytics', icon: BarChart3, label: 'Analytics' },
   { href: '/progress', icon: Target, label: 'Progress' },
 ];
 

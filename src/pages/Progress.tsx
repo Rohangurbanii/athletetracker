@@ -1,29 +1,34 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Target, MessageSquare, CheckCircle, Clock, Plus, Calendar } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress as ProgressBar } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CheckCircle, XCircle, Clock, Target, Users, Calendar, TrendingUp, TrendingDown, Activity, Moon, BarChart3, Star, Plus } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { SetGoalForm } from "@/components/forms/SetGoalForm";
 
-export const Progress = () => {
+const Progress = () => {
   const { profile } = useAuth();
-  const navigate = useNavigate();
-  const isCoach = profile?.role === 'coach';
-  const [activeTab, setActiveTab] = useState<'goals' | 'comments'>('goals');
-  const [goals, setGoals] = useState([]);
-  const [coachComments, setCoachComments] = useState([]);
+  const [activeTab, setActiveTab] = useState("progress");
+  const [goals, setGoals] = useState<any[]>([]);
+  const [coachComments, setCoachComments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [commentsLoading, setCommentsLoading] = useState(false);
-
-  // Coach-specific state for athlete selection
+  
+  // Analytics state
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
+  const [athleteAnalytics, setAthleteAnalytics] = useState<any>(null);
+  const [coachLoading, setCoachLoading] = useState(false);
+  const [rpeComparisonData, setRpeComparisonData] = useState<any[]>([]);
+  
+  // Coach-specific state
   const [batches, setBatches] = useState<any[]>([]);
   const [selectedBatch, setSelectedBatch] = useState<string>("");
   const [athletes, setAthletes] = useState<any[]>([]);
   const [selectedAthlete, setSelectedAthlete] = useState<string>("");
-  const [coachDataLoading, setCoachDataLoading] = useState(false);
 
   // Fetch batches for coaches
   const fetchBatches = async () => {
@@ -50,37 +55,29 @@ export const Progress = () => {
   // Fetch athletes in selected batch
   const fetchAthletes = async (batchId: string) => {
     try {
-      console.log('Fetching athletes for batch:', batchId);
-      
       // Get athletes in the selected batch
-      const { data: batchAthleteIds, error: batchError } = await supabase
+      const { data: batchAthleteIds } = await supabase
         .from('batch_athletes')
         .select('athlete_id')
         .eq('batch_id', batchId);
 
-      console.log('Batch athletes query result:', { batchAthleteIds, batchError });
-
       const athleteIds = (batchAthleteIds || []).map(ba => ba.athlete_id);
-      console.log('Athlete IDs from batch:', athleteIds);
       
       if (athleteIds.length === 0) {
-        console.log('No athletes found in this batch');
         setAthletes([]);
         return;
       }
 
-      const { data: athletes, error: athletesError } = await supabase
+      const { data: athletes } = await supabase
         .from('athletes')
         .select(`
           id,
-          profiles (
+          profiles!athletes_profile_id_fkey (
             id,
             full_name
           )
         `)
         .in('id', athleteIds);
-
-      console.log('Athletes query result:', { athletes, athletesError });
 
       const athletesList = (athletes || []).map(athlete => ({
         id: athlete.id,
@@ -88,7 +85,6 @@ export const Progress = () => {
         name: athlete.profiles?.full_name || 'Unknown'
       }));
 
-      console.log('Processed athletes list:', athletesList);
       setAthletes(athletesList);
     } catch (error) {
       console.error('Error fetching batch athletes:', error);
@@ -96,115 +92,188 @@ export const Progress = () => {
     }
   };
 
+  // Fetch goals for the selected athlete or current user
   const fetchGoals = async (targetAthleteId?: string) => {
-    if (!profile) return;
-
     try {
-      if (targetAthleteId) {
-        setCoachDataLoading(true);
-      } else {
-        setLoading(true);
-      }
-
+      setLoading(true);
+      
       // Get athlete data based on user role
       let athleteId = targetAthleteId;
-      
-      // For coaches, targetAthleteId is the athlete ID directly
       if (!athleteId && profile?.role === 'athlete') {
-        const { data: athleteData, error: athleteError } = await supabase
+        const { data: athleteData } = await supabase
           .from('athletes')
           .select('id')
           .eq('profile_id', profile.id)
-          .maybeSingle();
-
-        if (athleteError) {
-          console.error('Error fetching athlete:', athleteError);
-          if (targetAthleteId) {
-            setCoachDataLoading(false);
-          } else {
-            setLoading(false);
-          }
-          return;
-        }
-
+          .single();
         athleteId = athleteData?.id;
       }
 
       if (!athleteId) {
-        console.log('No athlete record found');
         setGoals([]);
-        if (targetAthleteId) {
-          setCoachDataLoading(false);
-        } else {
-          setLoading(false);
-        }
         return;
       }
 
-      console.log('Fetching goals for athlete ID:', athleteId);
-
-      // Get goals for this athlete
-      const { data: goalsData, error: goalsError } = await supabase
+      const { data: goalsData } = await supabase
         .from('goals')
         .select('*')
         .eq('athlete_id', athleteId)
         .order('created_at', { ascending: false });
 
-      console.log('Goals query result:', { goalsData, goalsError });
-
-      if (goalsError) {
-        console.error('Error fetching goals:', goalsError);
-        setGoals([]);
-      } else {
-        console.log('Fetched goals:', goalsData);
-        const transformedGoals = (goalsData || []).map(goal => ({
-          id: goal.id,
-          title: goal.title,
-          description: goal.description,
-          status: goal.status === 'completed' ? 'completed' : 'in_progress',
-          targetDate: goal.target_date,
-          progress: goal.progress_percentage || 0,
-          createdDate: goal.created_at?.split('T')[0] || '',
-          coachCompleted: goal.coach_completed || false,
-          completedByCoachAt: goal.completed_by_coach_at
-        }));
-        setGoals(transformedGoals);
-        console.log('Transformed goals:', transformedGoals);
-      }
+      setGoals(goalsData || []);
     } catch (error) {
-      console.error('Error:', error);
-      setGoals([]);
+      console.error('Error fetching goals:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch analytics for selected athlete (coaches) or current user (athletes)
+  const fetchAnalytics = async (targetAthleteId?: string) => {
+    try {
+      if (targetAthleteId) {
+        setCoachLoading(true);
+      } else {
+        setLoading(true);
+      }
+      
+      // Get athlete data based on user role
+      let athleteId = targetAthleteId;
+      if (!athleteId && profile?.role === 'athlete') {
+        const { data: athleteData } = await supabase
+          .from('athletes')
+          .select('id')
+          .eq('profile_id', profile.id)
+          .single();
+        athleteId = athleteData?.id;
+      }
+
+      if (!athleteId) {
+        if (targetAthleteId) {
+          setAthleteAnalytics(null);
+        } else {
+          setAnalyticsData(null);
+        }
+        return;
+      }
+
+      // Fetch sleep data
+      const { data: sleepData } = await supabase
+        .from('sleep_logs')
+        .select('*')
+        .eq('athlete_id', athleteId)
+        .order('sleep_date', { ascending: false })
+        .limit(30);
+
+      // Fetch RPE data
+      const { data: rpeData } = await supabase
+        .from('rpe_logs')
+        .select('*')
+        .eq('athlete_id', athleteId)
+        .order('log_date', { ascending: false })
+        .limit(30);
+
+      // Calculate analytics
+      const avgSleep = sleepData?.length ? 
+        sleepData.reduce((sum, log) => sum + (parseFloat(String(log.duration_hours)) || 0), 0) / sleepData.length : 0;
+      
+      const avgRPE = rpeData?.length ?
+        rpeData.reduce((sum, log) => sum + (log.rpe_score || 0), 0) / rpeData.length : 0;
+
+      const trainingLoad = rpeData?.length ?
+        rpeData.reduce((sum, log) => sum + ((log.rpe_score || 0) * (log.duration_minutes || 0)), 0) / rpeData.length : 0;
+
+      // Calculate trends
+      const sleepTrend = sleepData?.length >= 2 ? 
+        (parseFloat(String(sleepData[0]?.duration_hours)) || 0) - (parseFloat(String(sleepData[1]?.duration_hours)) || 0) : 0;
+      
+      const rpeTrend = rpeData?.length >= 2 ?
+        (rpeData[0]?.rpe_score || 0) - (rpeData[1]?.rpe_score || 0) : 0;
+
+      const analyticsResult = {
+        avgSleep: Number(avgSleep.toFixed(1)),
+        avgRPE: Number(avgRPE.toFixed(1)),
+        trainingLoad: Number(trainingLoad.toFixed(0)),
+        sleepTrend: Number(sleepTrend.toFixed(1)),
+        rpeTrend: Number(rpeTrend.toFixed(1)),
+        totalSessions: rpeData?.length || 0
+      };
+
+      if (targetAthleteId) {
+        setAthleteAnalytics(analyticsResult);
+      } else {
+        setAnalyticsData(analyticsResult);
+      }
+
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
     } finally {
       if (targetAthleteId) {
-        setCoachDataLoading(false);
+        setCoachLoading(false);
       } else {
         setLoading(false);
       }
     }
   };
 
-  const fetchCoachComments = async (targetAthleteId?: string) => {
-    if (!profile || (isCoach && !targetAthleteId)) return; // Only load for athletes or coaches with selected athlete
-
+  // Fetch RPE comparison data
+  const fetchRpeComparison = async (athleteId?: string) => {
     try {
-      setCommentsLoading(true);
-
-      // Get athlete data based on user role
-      let athleteId = targetAthleteId;
-      if (!athleteId && profile?.role === 'athlete') {
-        const { data: athleteData, error: athleteError } = await supabase
+      let targetAthleteId = athleteId;
+      
+      if (!targetAthleteId && profile?.role === 'athlete') {
+        const { data: athleteData } = await supabase
           .from('athletes')
           .select('id')
           .eq('profile_id', profile.id)
-          .maybeSingle();
+          .single();
+        targetAthleteId = athleteData?.id;
+      }
 
-        if (athleteError || !athleteData) {
-          console.error('Error fetching athlete:', athleteError);
-          setCoachComments([]);
-          return;
-        }
+      if (!targetAthleteId) {
+        setRpeComparisonData([]);
+        return;
+      }
 
-        athleteId = athleteData.id;
+      const { data: rpeData } = await supabase
+        .from('rpe_logs')
+        .select('log_date, activity_type, rpe_score, coach_rpe, notes, duration_minutes')
+        .eq('athlete_id', targetAthleteId)
+        .order('log_date', { ascending: false })
+        .limit(10);
+
+      const comparisonData = (rpeData || [])
+        .filter(log => log.rpe_score && log.coach_rpe)
+        .map(log => ({
+          date: log.log_date,
+          activityType: log.activity_type,
+          athleteRpe: log.rpe_score,
+          coachRpe: log.coach_rpe,
+          difference: log.rpe_score - log.coach_rpe,
+          duration: log.duration_minutes,
+          notes: log.notes
+        }));
+
+      setRpeComparisonData(comparisonData);
+    } catch (error) {
+      console.error('Error fetching RPE comparison:', error);
+      setRpeComparisonData([]);
+    }
+  };
+
+  // Fetch coach comments for the selected athlete or current user
+  const fetchCoachComments = async (targetAthleteId?: string) => {
+    try {
+      setCommentsLoading(true);
+      
+      // Get athlete data based on user role
+      let athleteId = targetAthleteId;
+      if (!athleteId && profile?.role === 'athlete') {
+        const { data: athleteData } = await supabase
+          .from('athletes')
+          .select('id')
+          .eq('profile_id', profile.id)
+          .single();
+        athleteId = athleteData?.id;
       }
 
       if (!athleteId) {
@@ -212,8 +281,7 @@ export const Progress = () => {
         return;
       }
 
-      // Get tournament results with coach comments for this athlete
-      const { data: commentsData, error: commentsError } = await supabase
+      const { data: commentsData } = await supabase
         .from('tournament_results')
         .select(`
           id,
@@ -229,64 +297,15 @@ export const Progress = () => {
         .not('coach_comments', 'eq', '')
         .order('coach_completed_at', { ascending: false });
 
-      if (commentsError) {
-        console.error('Error fetching coach comments:', commentsError);
-        setCoachComments([]);
-      } else {
-        setCoachComments(commentsData || []);
-      }
+      setCoachComments(commentsData || []);
     } catch (error) {
       console.error('Error fetching coach comments:', error);
-      setCoachComments([]);
     } finally {
       setCommentsLoading(false);
     }
   };
 
-  // Effects and event handlers
-  useEffect(() => {
-    if (profile) {
-      if (profile.role === 'coach') {
-        fetchBatches();
-      } else {
-        fetchGoals();
-      }
-    }
-  }, [profile]);
-
-  useEffect(() => {
-    if (selectedBatch) {
-      console.log('Selected batch changed:', selectedBatch);
-      fetchAthletes(selectedBatch);
-      setSelectedAthlete("");
-      setGoals([]);
-      setCoachComments([]);
-    }
-  }, [selectedBatch]);
-
-  useEffect(() => {
-    if (selectedAthlete) {
-      console.log('Selected athlete changed:', selectedAthlete);
-      fetchGoals(selectedAthlete);
-      if (activeTab === 'comments') {
-        fetchCoachComments(selectedAthlete);
-      }
-    } else {
-      setGoals([]);
-      setCoachComments([]);
-    }
-  }, [selectedAthlete]);
-
-  useEffect(() => {
-    if (activeTab === 'comments') {
-      if (isCoach && selectedAthlete) {
-        fetchCoachComments(selectedAthlete);
-      } else if (!isCoach) {
-        fetchCoachComments();
-      }
-    }
-  }, [activeTab, selectedAthlete, isCoach]);
-
+  // Helper function to get status icon
   const getStatusIcon = (status: string) => {
     return status === 'completed' ? (
       <CheckCircle className="h-4 w-4 text-green-500" />
@@ -295,12 +314,12 @@ export const Progress = () => {
     );
   };
 
+  // Toggle coach completion status
   const toggleCoachCompletion = async (goalId: string, currentStatus: boolean) => {
     try {
       const updateData = {
         coach_completed: !currentStatus,
         completed_by_coach_at: !currentStatus ? new Date().toISOString() : null,
-        // If marking as complete, set progress to 100%
         ...((!currentStatus) && { progress_percentage: 100 })
       };
 
@@ -314,16 +333,14 @@ export const Progress = () => {
         return;
       }
 
-      // Update local state
       setGoals(prevGoals => 
         prevGoals.map(goal => 
           goal.id === goalId 
             ? { 
                 ...goal, 
-                coachCompleted: !currentStatus,
-                completedByCoachAt: !currentStatus ? new Date().toISOString() : null,
-                // If marking as complete, set progress to 100%
-                progress: !currentStatus ? 100 : goal.progress
+                coach_completed: !currentStatus,
+                completed_by_coach_at: !currentStatus ? new Date().toISOString() : null,
+                progress_percentage: !currentStatus ? 100 : goal.progress_percentage
               }
             : goal
         )
@@ -333,16 +350,15 @@ export const Progress = () => {
     }
   };
 
+  // Update goal progress
   const updateProgress = async (goalId: string, newProgress: number) => {
     try {
       const updateData = {
         progress_percentage: newProgress,
-        // If setting to 100%, automatically mark as coach completed
         ...(newProgress === 100 && {
           coach_completed: true,
           completed_by_coach_at: new Date().toISOString()
         }),
-        // If setting to less than 100%, unmark coach completion
         ...(newProgress < 100 && {
           coach_completed: false,
           completed_by_coach_at: null
@@ -359,15 +375,14 @@ export const Progress = () => {
         return;
       }
 
-      // Update local state
       setGoals(prevGoals => 
         prevGoals.map(goal => 
           goal.id === goalId 
             ? { 
                 ...goal, 
-                progress: newProgress,
-                coachCompleted: newProgress === 100 ? true : (newProgress < 100 ? false : goal.coachCompleted),
-                completedByCoachAt: newProgress === 100 ? new Date().toISOString() : (newProgress < 100 ? null : goal.completedByCoachAt)
+                progress_percentage: newProgress,
+                coach_completed: newProgress === 100 ? true : (newProgress < 100 ? false : goal.coach_completed),
+                completed_by_coach_at: newProgress === 100 ? new Date().toISOString() : (newProgress < 100 ? null : goal.completed_by_coach_at)
               }
             : goal
         )
@@ -377,29 +392,99 @@ export const Progress = () => {
     }
   };
 
+  const getInsight = (metric: string, value: number, trend: number) => {
+    switch (metric) {
+      case 'sleep':
+        if (value >= 8) return { text: "Excellent sleep quality", variant: "default" as const };
+        if (value >= 7) return { text: "Good sleep quality", variant: "secondary" as const };
+        return { text: "Needs improvement", variant: "destructive" as const };
+      
+      case 'rpe':
+        if (value <= 3) return { text: "Light intensity", variant: "secondary" as const };
+        if (value <= 6) return { text: "Moderate intensity", variant: "default" as const };
+        return { text: "High intensity", variant: "destructive" as const };
+      
+      case 'load':
+        if (trend > 0) return { text: "Increasing load", variant: "default" as const };
+        if (trend < 0) return { text: "Decreasing load", variant: "secondary" as const };
+        return { text: "Stable load", variant: "outline" as const };
+      
+      default:
+        return { text: "No data", variant: "outline" as const };
+    }
+  };
+
+  // Effects for data fetching
+  useEffect(() => {
+    if (profile) {
+      if (profile.role === 'coach') {
+        fetchBatches();
+      } else {
+        if (activeTab === 'progress') {
+          fetchGoals();
+        } else if (activeTab === 'comments') {
+          fetchCoachComments();
+        } else if (activeTab === 'analytics') {
+          fetchAnalytics();
+          fetchRpeComparison();
+        }
+      }
+    }
+  }, [profile, activeTab]);
+
+  useEffect(() => {
+    if (selectedBatch) {
+      fetchAthletes(selectedBatch);
+      setSelectedAthlete("");
+    }
+  }, [selectedBatch]);
+
+  useEffect(() => {
+    if (selectedAthlete) {
+      if (activeTab === 'progress') {
+        fetchGoals(selectedAthlete);
+      } else if (activeTab === 'comments') {
+        fetchCoachComments(selectedAthlete);
+      } else if (activeTab === 'analytics') {
+        fetchAnalytics(selectedAthlete);
+        fetchRpeComparison(selectedAthlete);
+      }
+    } else if (profile?.role === 'coach') {
+      setGoals([]);
+      setCoachComments([]);
+      setAthleteAnalytics(null);
+      setRpeComparisonData([]);
+    }
+  }, [selectedAthlete, activeTab]);
+
+  if (loading) {
+    return (
+      <div className="mobile-container flex items-center justify-center min-h-screen">
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="mobile-container space-y-6 p-4">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Progress Tracking</h1>
-          <p className="text-muted-foreground">
-            {isCoach ? 'Track your athletes\' development journey' : 'Monitor your growth and achievements'}
-          </p>
-        </div>
-        {!isCoach && (
+        <h1 className="text-2xl font-bold tracking-tight">Progress</h1>
+        {profile?.role === 'athlete' && activeTab === 'progress' && (
           <Button 
             className="gradient-primary text-primary-foreground"
-            onClick={() => navigate('/set-goal')}
+            onClick={() => window.location.href = '/set-goal'}
           >
             <Plus className="h-4 w-4 mr-2" />
             Set Goal
           </Button>
         )}
+        <Badge variant="outline" className="px-3 py-1">
+          {profile?.role?.charAt(0).toUpperCase() + profile?.role?.slice(1)}
+        </Badge>
       </div>
 
       {/* Coach Selection Section */}
-      {isCoach && (
+      {profile?.role === 'coach' && (
         <div className="space-y-4">
           <div className="flex gap-4">
             <Select value={selectedBatch} onValueChange={setSelectedBatch}>
@@ -435,272 +520,291 @@ export const Progress = () => {
 
           {!selectedAthlete && (
             <div className="text-center py-8 text-muted-foreground">
-              Select a batch and athlete to view progress data
-            </div>
-          )}
-
-          {coachDataLoading && selectedAthlete && (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin w-6 h-6 border-4 border-primary border-t-transparent rounded-full"></div>
+              Select a batch and athlete to view their data
             </div>
           )}
         </div>
       )}
 
-      {/* Tab Navigation - Show for athletes or when coach has selected athlete */}
-      {((isCoach && selectedAthlete) || (!isCoach)) && (
-        <div className="flex space-x-1 bg-muted p-1 rounded-lg">
-          <button
-            onClick={() => setActiveTab('goals')}
-            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-              activeTab === 'goals'
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Goals Tracker
-          </button>
-          <button
-            onClick={() => setActiveTab('comments')}
-            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-              activeTab === 'comments'
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Coach Comments
-          </button>
-        </div>
-      )}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="progress">Progress</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="comments">Comments</TabsTrigger>
+        </TabsList>
 
-      {/* Goals Tab - Show for athletes or when coach has selected athlete */}
-      {((isCoach && selectedAthlete) || (!isCoach)) && activeTab === 'goals' && (
-        (loading || coachDataLoading) ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {goals.map((goal) => (
-            <Card key={goal.id} className="sport-card">
-              <CardHeader className="pb-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-3">
-                      {getStatusIcon(goal.status)}
-                      <CardTitle className="text-xl font-semibold">{goal.title}</CardTitle>
-                    </div>
-                    <p className="text-muted-foreground leading-relaxed">{goal.description}</p>
-                  </div>
-                  
-                  <div className="flex flex-col gap-2 ml-4">
-                    <Badge 
-                      className={
-                        goal.status === 'completed' 
-                          ? 'bg-green-500/20 text-green-400 border-green-400/20' 
-                          : 'bg-blue-500/20 text-blue-400 border-blue-400/20'
-                      }
-                    >
-                      {goal.status === 'completed' ? 'Completed' : 'In Progress'}
-                    </Badge>
-                    
-                    {/* Coach completion badge */}
-                    {isCoach && goal.coachCompleted && (
-                      <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-400/20 text-xs">
-                        Coach Completed
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-                
-                {/* Coach completion status for athletes */}
-                {!isCoach && goal.coachCompleted && (
-                  <div className="flex items-center gap-2 mt-3 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    <span className="text-sm text-green-600 font-medium">
-                      Marked complete by coach
-                    </span>
-                    {goal.completedByCoachAt && (
-                      <span className="text-xs text-green-600/70 ml-auto">
-                        {new Date(goal.completedByCoachAt).toLocaleDateString()}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </CardHeader>
-              
-              <CardContent className="space-y-6">
-                {/* Progress Section */}
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-muted-foreground">Progress</span>
-                    <span className="text-lg font-bold text-foreground">{goal.progress}%</span>
-                  </div>
-                  
-                  {/* For coaches: Clickable percentage buttons */}
-                  {isCoach ? (
-                    <div className="space-y-3">
-                       <div className="flex gap-2">
-                         {[0, 25, 50, 75, 100].map((percentage) => (
-                           <Button
-                             key={percentage}
-                             size="sm"
-                             variant={goal.progress === percentage ? "default" : "outline"}
-                             className={`text-sm px-4 py-2 ${
-                               goal.progress === percentage 
-                                 ? 'bg-primary text-primary-foreground' 
-                                 : 'hover:bg-muted'
-                             }`}
-                             onClick={() => updateProgress(goal.id, percentage)}
-                           >
-                             {percentage}%
-                           </Button>
-                         ))}
-                      </div>
-                      <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                        <div 
-                          className="gradient-primary h-full rounded-full transition-all duration-300"
-                          style={{ width: `${goal.progress}%` }}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    /* For athletes: Static progress bar */
-                    <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
-                      <div 
-                        className="gradient-primary h-full rounded-full transition-all duration-500 ease-out"
-                        style={{ width: `${goal.progress}%` }}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* Goal Details Grid */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Target Date</span>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">
-                        {new Date(goal.targetDate).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Created</span>
-                    <div className="flex items-center gap-2">
-                      <Plus className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">
-                        {new Date(goal.createdDate).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Actions - Only for coaches */}
-                {isCoach && (
-                  <div className="flex space-x-3 pt-2">
-                    <Button 
-                      variant="outline" 
-                      className="flex-1"
-                      disabled
-                    >
-                      Update Progress
-                    </Button>
-                    <Button 
-                      onClick={() => toggleCoachCompletion(goal.id, goal.coachCompleted)}
-                      className={`transition-all duration-200 ${
-                        goal.coachCompleted 
-                          ? 'bg-green-500 hover:bg-green-600 text-white' 
-                          : 'bg-primary hover:bg-primary/90 text-primary-foreground'
-                      }`}
-                    >
-                      {goal.coachCompleted ? (
-                        <>
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Complete
-                        </>
-                      ) : (
-                        'Mark Complete'
-                      )}
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-          </div>
-        )
-      )}
-
-      {/* Comments Tab - Show for athletes or when coach has selected athlete */}
-      {((isCoach && selectedAthlete) || (!isCoach)) && activeTab === 'comments' && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold">Tournament Coach Feedback</h2>
-          
-          {commentsLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
+        <TabsContent value="progress" className="space-y-4">
+          {goals.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No goals set yet. {profile?.role === 'athlete' ? 'Click "Set Goal" to create your first goal.' : 'The athlete has not set any goals yet.'}
             </div>
-          ) : coachComments.length > 0 ? (
+          ) : (
             <div className="space-y-4">
-              {coachComments.map((comment) => (
-                <Card key={comment.id} className="sport-card">
-                  <CardHeader className="pb-3">
+              {goals.map((goal) => (
+                <Card key={goal.id} className="bg-card/50 backdrop-blur border-border/20">
+                  <CardHeader>
                     <div className="flex items-start justify-between">
-                      <CardTitle className="text-lg">{comment.tournament.name}</CardTitle>
-                      <Badge className="bg-blue-500/20 text-blue-400">
-                        Coach Feedback
-                      </Badge>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          {getStatusIcon(goal.status)}
+                          <CardTitle className="text-lg">{goal.title}</CardTitle>
+                        </div>
+                        <p className="text-muted-foreground text-sm">{goal.description}</p>
+                      </div>
+                      {profile?.role === 'coach' && (
+                        <Button
+                          variant={goal.coach_completed ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => toggleCoachCompletion(goal.id, goal.coach_completed)}
+                        >
+                          {goal.coach_completed ? "Completed" : "Mark Complete"}
+                        </Button>
+                      )}
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="stat-card border-l-4 border-blue-400">
-                      <div className="flex items-center gap-2 mb-2">
-                        <MessageSquare className="h-4 w-4 text-blue-400" />
-                        <p className="text-sm text-blue-400 font-semibold">Coach Comments</p>
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex justify-between text-sm mb-2">
+                          <span>Progress</span>
+                          <span>{goal.progress_percentage || 0}%</span>
+                        </div>
+                        <ProgressBar value={goal.progress_percentage || 0} className="w-full" />
                       </div>
-                      <p className="text-sm">{comment.coach_comments}</p>
+                      
+                      {profile?.role === 'coach' && (
+                        <div className="flex gap-2">
+                          {[25, 50, 75, 100].map((percent) => (
+                            <Button
+                              key={percent}
+                              variant="outline"
+                              size="sm"
+                              onClick={() => updateProgress(goal.id, percent)}
+                              className="flex-1"
+                            >
+                              {percent}%
+                            </Button>
+                          ))}
+                        </div>
+                      )}
+                      
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Target: {goal.target_date ? new Date(goal.target_date).toLocaleDateString() : 'No date set'}</span>
+                        <span>Created: {goal.created_at ? new Date(goal.created_at).toLocaleDateString() : 'Unknown'}</span>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
-          ) : (
-            <Card className="sport-card">
-              <CardContent className="text-center py-12">
-                <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No coach comments yet</h3>
-                <p className="text-muted-foreground">
-                  {isCoach ? "This athlete hasn't received any tournament feedback yet" : "Coach feedback from tournaments will appear here after competitions"}
-                </p>
-              </CardContent>
-            </Card>
           )}
-        </div>
-      )}
+        </TabsContent>
 
-      {/* Empty States for Goals */}
-      {((isCoach && selectedAthlete) || (!isCoach)) && activeTab === 'goals' && !loading && !coachDataLoading && goals.length === 0 && (
-        <Card className="sport-card">
-          <CardContent className="text-center py-12">
-            <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No goals set</h3>
-            <p className="text-muted-foreground mb-4">
-              {isCoach ? "This athlete hasn't set any goals yet" : "Start setting specific goals to track your development"}
-            </p>
-            {!isCoach && (
-              <Button 
-                className="gradient-primary text-primary-foreground"
-                onClick={() => navigate('/set-goal')}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Set First Goal
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      )}
+        <TabsContent value="analytics" className="space-y-4">
+          {profile?.role === 'coach' && !selectedAthlete && (
+            <div className="text-center py-8 text-muted-foreground">
+              Select a batch and athlete to view analytics
+            </div>
+          )}
+
+          {coachLoading && selectedAthlete && (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin w-6 h-6 border-4 border-primary border-t-transparent rounded-full"></div>
+            </div>
+          )}
+
+          {(profile?.role === 'athlete' ? analyticsData : athleteAnalytics) && (
+            <>
+              {/* Key Metrics Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card className="bg-card/50 backdrop-blur border-border/20 p-4">
+                  <div className="flex items-start space-x-4">
+                    <div className="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center">
+                      <Activity className="h-6 w-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-muted-foreground font-medium mb-1">This Week</p>
+                      <div className="flex items-baseline space-x-1">
+                        <span className="text-3xl font-bold text-foreground">
+                          {(profile?.role === 'athlete' ? analyticsData : athleteAnalytics)?.totalSessions}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1 font-medium">Sessions</p>
+                    </div>
+                  </div>
+                </Card>
+
+                <Card className="bg-card/50 backdrop-blur border-border/20 p-4">
+                  <div className="flex items-start space-x-4">
+                    <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center">
+                      <TrendingUp className="h-6 w-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-muted-foreground font-medium mb-1">Avg RPE</p>
+                      <div className="flex items-baseline space-x-1">
+                        <span className="text-3xl font-bold text-foreground">
+                          {(profile?.role === 'athlete' ? analyticsData : athleteAnalytics)?.avgRPE?.toFixed(0)}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1 font-medium">out of 10</p>
+                    </div>
+                  </div>
+                </Card>
+
+                <Card className="bg-card/50 backdrop-blur border-border/20 p-4">
+                  <div className="flex items-start space-x-4">
+                    <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center">
+                      <Target className="h-6 w-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-muted-foreground font-medium mb-1">Training Load</p>
+                      <div className="flex items-baseline space-x-1">
+                        <span className="text-3xl font-bold text-foreground">
+                          {(profile?.role === 'athlete' ? analyticsData : athleteAnalytics)?.trainingLoad}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1 font-medium">Total Score</p>
+                    </div>
+                  </div>
+                </Card>
+
+                <Card className="bg-card/50 backdrop-blur border-border/20 p-4">
+                  <div className="flex items-start space-x-4">
+                    <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center">
+                      <BarChart3 className="h-6 w-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-muted-foreground font-medium mb-1">Sleep Quality</p>
+                      <div className="flex items-baseline space-x-1">
+                        <span className="text-3xl font-bold text-foreground">
+                          {(profile?.role === 'athlete' ? analyticsData : athleteAnalytics)?.avgSleep?.toFixed(1)}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1 font-medium">Average Hours</p>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+
+              {/* RPE Comparison Table */}
+              {rpeComparisonData.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Star className="h-5 w-5" />
+                      RPE Comparison
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {rpeComparisonData.map((entry, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3">
+                              <div className="text-sm font-medium">{entry.activityType}</div>
+                              <Badge variant="outline" className="text-xs">
+                                {new Date(entry.date).toLocaleDateString()}
+                              </Badge>
+                            </div>
+                            {entry.notes && (
+                              <p className="text-xs text-muted-foreground mt-1">{entry.notes}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-4 text-sm">
+                            <div className="text-center">
+                              <div className="text-xs text-muted-foreground">Athlete</div>
+                              <div className="font-medium">{entry.athleteRpe}</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-xs text-muted-foreground">Coach</div>
+                              <div className="font-medium">{entry.coachRpe}</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-xs text-muted-foreground">Diff</div>
+                              <div className={`font-medium ${
+                                entry.difference > 0 ? 'text-red-500' : 
+                                entry.difference < 0 ? 'text-green-500' : 'text-muted-foreground'
+                              }`}>
+                                {entry.difference > 0 ? '+' : ''}{entry.difference}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          )}
+
+          {profile?.role === 'athlete' && !analyticsData && (
+            <div className="text-center py-8 text-muted-foreground">
+              No analytics data available. Start logging your training sessions and sleep to see insights.
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="comments" className="space-y-4">
+          {commentsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin w-6 h-6 border-4 border-primary border-t-transparent rounded-full"></div>
+            </div>
+          ) : coachComments.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No coach comments available yet.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {coachComments.map((comment) => (
+                <Card key={comment.id} className="bg-card/50 backdrop-blur border-border/20">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="text-lg">{comment.tournament?.name}</CardTitle>
+                        <p className="text-muted-foreground text-sm">
+                          {comment.tournament?.location} • {comment.tournament?.start_date ? new Date(comment.tournament.start_date).toLocaleDateString() : 'No date'}
+                        </p>
+                      </div>
+                      {comment.position && (
+                        <Badge variant="outline">
+                          Position: {comment.position}
+                        </Badge>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="font-medium mb-2">Coach Comments</h4>
+                        <p className="text-muted-foreground">{comment.coach_comments}</p>
+                      </div>
+                      
+                      {comment.strong_points && (
+                        <div>
+                          <h4 className="font-medium mb-2 text-green-600">Strong Points</h4>
+                          <p className="text-muted-foreground">{comment.strong_points}</p>
+                        </div>
+                      )}
+                      
+                      {comment.areas_of_improvement && (
+                        <div>
+                          <h4 className="font-medium mb-2 text-orange-600">Areas for Improvement</h4>
+                          <p className="text-muted-foreground">{comment.areas_of_improvement}</p>
+                        </div>
+                      )}
+                      
+                      <div className="text-xs text-muted-foreground">
+                        Commented on: {comment.coach_completed_at ? new Date(comment.coach_completed_at).toLocaleDateString() : 'Unknown'}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
