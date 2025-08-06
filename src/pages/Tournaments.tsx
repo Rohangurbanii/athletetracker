@@ -175,18 +175,47 @@ export const Tournaments = () => {
 
           const athleteIds = batchAthleteData?.map(ba => ba.athlete_id) || [];
 
-          // Get tournaments where coach has completed commenting
+          // Get tournaments where ALL participating athletes have coach comments
+          // First, get all tournaments with participating athletes from this coach's batches
+          const { data: participatingAthletes } = await supabase
+            .from('tournament_participation')
+            .select('tournament_id, athlete_id')
+            .eq('is_participating', true)
+            .in('athlete_id', athleteIds);
+
+          // Group by tournament to check completion status
+          const tournamentCompletionMap = new Map<string, { total: number; commented: number }>();
+          
+          for (const participation of participatingAthletes || []) {
+            const tournamentId = participation.tournament_id;
+            if (!tournamentCompletionMap.has(tournamentId)) {
+              tournamentCompletionMap.set(tournamentId, { total: 0, commented: 0 });
+            }
+            tournamentCompletionMap.get(tournamentId)!.total++;
+          }
+
+          // Check which tournaments have coach comments for all participating athletes
           const { data: completedCommentsData } = await supabase
             .from('tournament_results')
-            .select('tournament_id')
+            .select('tournament_id, athlete_id')
             .not('coach_completed_at', 'is', null)
             .in('athlete_id', athleteIds);
 
-          const completedTournamentIds = [...new Set((completedCommentsData || []).map(r => r.tournament_id))];
+          for (const comment of completedCommentsData || []) {
+            const tournamentId = comment.tournament_id;
+            if (tournamentCompletionMap.has(tournamentId)) {
+              tournamentCompletionMap.get(tournamentId)!.commented++;
+            }
+          }
 
-          // Exclude completed tournaments from upcoming list
-          if (completedTournamentIds.length > 0) {
-            upcomingQuery = upcomingQuery.not('id', 'in', `(${completedTournamentIds.join(',')})`);
+          // Only exclude tournaments where ALL participating athletes have coach comments
+          const fullyCompletedTournamentIds = Array.from(tournamentCompletionMap.entries())
+            .filter(([_, status]) => status.total > 0 && status.total === status.commented)
+            .map(([tournamentId, _]) => tournamentId);
+
+          // Exclude fully completed tournaments from upcoming list
+          if (fullyCompletedTournamentIds.length > 0) {
+            upcomingQuery = upcomingQuery.not('id', 'in', `(${fullyCompletedTournamentIds.join(',')})`);
           }
         }
       }
