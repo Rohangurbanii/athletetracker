@@ -14,14 +14,15 @@ export const MobileLayout = () => {
       }
     };
     idle(() => {
-      // Slight delay to avoid competing with initial paint
-      setTimeout(() => {
-        import('@/pages/Dashboard');
-        import('@/pages/Practice');
-        import('@/pages/Sleep');
-        import('@/pages/Tournaments');
-        import('@/pages/Progress');
-      }, 1200);
+      import('@/pages/Dashboard');
+      import('@/pages/Practice');
+      import('@/pages/Sleep');
+      import('@/pages/Tournaments');
+      import('@/pages/Progress');
+      import('@/components/forms/LogSessionForm');
+      import('@/components/forms/LogSleepForm');
+      import('@/components/forms/SetGoalForm');
+      import('@/components/forms/SchedulePracticeForm');
     });
   }, []);
   return (

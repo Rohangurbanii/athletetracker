@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -41,22 +41,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  // Prevent duplicate profile fetches across init and auth state changes
-  const lastFetchedUserId = useRef<string | null>(null);
-  const isFetchingProfile = useRef(false);
-
   useEffect(() => {
     // Get initial session
     console.log("getting initial session");
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        const uid = session.user.id;
-        if (lastFetchedUserId.current !== uid) {
-          console.log("session present, now fetching profile");
-          lastFetchedUserId.current = uid;
-          fetchProfile(uid);
-        }
+        console.log("session present, now fetching profile");
+        fetchProfile(session.user.id);
       } else {
         console.log("session is absent");
         setLoading(false);
@@ -68,11 +60,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       async (event, session) => {
         setUser(session?.user ?? null);
         if (session?.user) {
-          const uid = session.user.id;
-          if (lastFetchedUserId.current !== uid) {
-            await fetchProfile(uid);
-            lastFetchedUserId.current = uid;
-          }
+          await fetchProfile(session.user.id);
         } else {
           setProfile(null);
           setLoading(false);
@@ -84,8 +72,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const fetchProfile = async (userId: string) => {
-    if (isFetchingProfile.current) return;
-    isFetchingProfile.current = true;
     try {
       console.log('Fetching profile for user:', userId);
       const { data, error } = await supabase
@@ -104,13 +90,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       console.log('Profile fetched successfully:', data);
       setProfile(data as Profile);
-      lastFetchedUserId.current = userId;
     } catch (error) {
       console.error('Error fetching profile:', error);
       // If no profile found, user might need to complete signup
       setProfile(null);
     } finally {
-      isFetchingProfile.current = false;
       setLoading(false);
     }
   };
