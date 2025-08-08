@@ -8,7 +8,16 @@ const navigationItems = [
   { href: '/sleep', icon: Moon, label: 'Sleep' },
   { href: '/tournaments', icon: Trophy, label: 'Tournaments' },
   { href: '/progress', icon: Target, label: 'Progress' },
-];
+]; 
+const prefetch = (href: string) => {
+  switch (href) {
+    case '/dashboard': import('@/pages/Dashboard'); break;
+    case '/practice': import('@/pages/Practice'); break;
+    case '/sleep': import('@/pages/Sleep'); break;
+    case '/tournaments': import('@/pages/Tournaments'); break;
+    case '/progress': import('@/pages/Progress'); break;
+  }
+};
 
 export const BottomNavigation = () => {
   const location = useLocation();
@@ -24,6 +33,8 @@ export const BottomNavigation = () => {
             <Link
               key={item.href}
               to={item.href}
+              onMouseEnter={() => prefetch(item.href)}
+              onTouchStart={() => prefetch(item.href)}
               className={cn(
                 'flex flex-col items-center space-y-1 py-2 px-3 rounded-lg transition-all duration-200',
                 isActive 

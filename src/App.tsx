@@ -32,7 +32,16 @@ const LoadingSpinner = () => (
   </div>
 );
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60, // cache for 1 min
+      gcTime: 1000 * 60 * 5, // garbage collect after 5 mins
+      refetchOnWindowFocus: false,
+      retry: 2,
+    },
+  },
+});
 
 const ProtectedRoutes = () => {
   const { user, loading } = useAuth();
