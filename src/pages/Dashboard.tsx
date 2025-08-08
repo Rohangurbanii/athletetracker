@@ -62,53 +62,35 @@ export const Dashboard = () => {
           .single();
 
         if (coach) {
+          // Single query to fetch batches with athlete names (avoid N+1)
           const { data: batchesData } = await supabase
             .from('batches')
-            .select('id, name, description, created_at')
+            .select(`
+              id,
+              name,
+              description,
+              created_at,
+              batch_athletes (
+                athlete:athletes (
+                  id,
+                  profile:profiles ( full_name )
+                )
+              )
+            `)
             .eq('coach_id', coach.id)
             .order('created_at', { ascending: false });
 
-          // Get athlete count for each batch separately
-          const batchesWithAthletes = await Promise.all(
-            (batchesData || []).map(async (batch) => {
-              // First get the batch_athletes records
-              const { data: batchAthleteIds } = await supabase
-                .from('batch_athletes')
-                .select('athlete_id')
-                .eq('batch_id', batch.id);
+          setBatches((batchesData || []).map((b: any) => ({
+            id: b.id,
+            name: b.name,
+            description: b.description,
+            created_at: b.created_at,
+            batch_athletes: (b.batch_athletes || []).map((ba: any) => ({
+              athlete: ba.athlete
+            }))
+          })));
 
-              // Then get athlete details for those IDs
-              const athleteIds = (batchAthleteIds || []).map(ba => ba.athlete_id);
-              
-              if (athleteIds.length === 0) {
-                return {
-                  ...batch,
-                  batch_athletes: []
-                };
-              }
-
-              const { data: athletes } = await supabase
-                .from('athletes')
-                .select(`
-                  id,
-                  profile:profiles!athletes_profile_id_fkey(
-                    full_name
-                  )
-                `)
-                .in('id', athleteIds);
-
-              return {
-                ...batch,
-                batch_athletes: (athletes || []).map(athlete => ({
-                  athlete
-                }))
-              };
-            })
-          );
-
-          setBatches(batchesWithAthletes);
-
-          // Fetch attendance data for coaches
+          // Fetch attendance data for coaches (kept as-is)
           await fetchAttendanceData(coach.id, selectedDate);
         }
         return; // Coach dashboard doesn't need athlete analytics
