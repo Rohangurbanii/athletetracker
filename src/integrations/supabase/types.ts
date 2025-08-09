@@ -666,6 +666,71 @@ export type Database = {
           },
         ]
       }
+      stat_definitions: {
+        Row: {
+          club_id: string
+          created_at: string
+          created_by_profile_id: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          created_by_profile_id: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          created_by_profile_id?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      stat_values: {
+        Row: {
+          athlete_id: string
+          created_at: string
+          id: string
+          stat_id: string
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          athlete_id: string
+          created_at?: string
+          id?: string
+          stat_id: string
+          updated_at?: string
+          value: number
+        }
+        Update: {
+          athlete_id?: string
+          created_at?: string
+          id?: string
+          stat_id?: string
+          updated_at?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stat_values_stat_id_fkey"
+            columns: ["stat_id"]
+            isOneToOne: false
+            referencedRelation: "stat_definitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tournament_participation: {
         Row: {
           athlete_id: string
@@ -875,7 +940,7 @@ export type Database = {
         Returns: undefined
       }
       generate_club_code: {
-        Args: { club_uuid: string }
+        Args: Record<PropertyKey, never> | { club_uuid: string }
         Returns: string
       }
       get_club_by_code: {

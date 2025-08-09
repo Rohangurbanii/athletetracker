@@ -15,6 +15,8 @@ const Sleep = lazy(() => import("@/pages/Sleep"));
 const Tournaments = lazy(() => import("@/pages/Tournaments"));
 const Progress = lazy(() => import("@/pages/Progress"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
+const AthleteStats = lazy(() => import("@/pages/AthleteStats"));
+const MyStats = lazy(() => import("@/pages/MyStats"));
 
 // Lazy load forms for code splitting
 const LogSessionForm = lazy(() => import("@/components/forms/LogSessionForm"));
@@ -72,6 +74,8 @@ const ProtectedRoutes = () => {
           <Route path="log-sleep" element={<LogSleepForm />} />
           <Route path="set-goal" element={<SetGoalForm />} />
           <Route path="schedule-practice" element={<SchedulePracticeForm />} />
+          <Route path="athlete-stats" element={<AthleteStats />} />
+          <Route path="my-stats" element={<MyStats />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>

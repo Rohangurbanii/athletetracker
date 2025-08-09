@@ -368,10 +368,10 @@ export const Dashboard = () => {
               <Button 
                 variant="outline" 
                 className="h-12"
-                onClick={() => navigate('/analytics')}
+                onClick={() => navigate('/athlete-stats')}
               >
-                <TrendingUp className="h-5 w-5 mr-2" />
-                View Analytics
+                <BarChart3 className="h-5 w-5 mr-2" />
+                Athlete Stats
               </Button>
               
               <Button 
@@ -387,10 +387,10 @@ export const Dashboard = () => {
             <>
               <Button 
                 className="gradient-primary text-primary-foreground font-semibold h-12"
-                onClick={() => navigate('/log-session')}
+                onClick={() => navigate('/my-stats')}
               >
-                <Calendar className="h-5 w-5 mr-2" />
-                Log Session
+                <BarChart3 className="h-5 w-5 mr-2" />
+                My Stats
               </Button>
               
               <Button 
