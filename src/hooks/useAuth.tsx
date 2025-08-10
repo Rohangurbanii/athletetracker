@@ -102,7 +102,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signUp = async (email: string, password: string, fullName: string, role: 'coach' | 'athlete', clubId: string) => {
     try {
       // Rate limiting check
-      if (!checkRateLimit(`signup_${email}`, 3, 300000)) { // 3 attempts per 5 minutes
+      if (!checkRateLimit(`signup_${email}`, 3, 3000)) { // 3 attempts per 5 minutes
         throw new Error('Too many signup attempts. Please try again later.');
       }
 
