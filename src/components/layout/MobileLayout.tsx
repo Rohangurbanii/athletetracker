@@ -28,7 +28,7 @@ export const MobileLayout = () => {
   return (
     <div className="mobile-container">
       <MobileHeader />
-      <main className="mobile-content">
+      <main className="mobile-content space-y-6">
         <Outlet />
       </main>
       <BottomNavigation />

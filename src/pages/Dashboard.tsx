@@ -461,10 +461,10 @@ export const Dashboard = () => {
         </CardHeader>
         <CardContent>
           {isCoach ? (
-            // Coach: Show attendance data with fixed height and scroll
-            <div className="h-64">
+            // Coach: Show attendance data with natural height
+            <div className="space-y-2">
               {attendanceData.length > 0 ? (
-                <div className="h-full overflow-y-auto space-y-2">
+                <div className="space-y-2">
                   {attendanceData.map((athlete, index) => (
                     <div key={index} className="flex items-center justify-between p-3 bg-card/50 rounded-lg border border-border/50">
                       <div>
@@ -480,7 +480,7 @@ export const Dashboard = () => {
                   ))}
                 </div>
               ) : (
-                <div className="h-full flex flex-col items-center justify-center">
+                <div className="flex flex-col items-center justify-center py-8">
                   <Users className="h-12 w-12 text-muted-foreground mb-4" />
                   <p className="text-muted-foreground">No athletes found for selected date</p>
                   <p className="text-sm text-muted-foreground">Make sure you have athletes assigned to your batches</p>

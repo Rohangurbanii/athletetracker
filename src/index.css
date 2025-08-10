@@ -119,6 +119,7 @@ All colors MUST be HSL.
     @apply font-bold tracking-tight;
   }
 
+  p { @apply leading-relaxed; }
   .gradient-primary {
     background: var(--gradient-primary);
   }
@@ -159,7 +160,7 @@ All colors MUST be HSL.
   }
 
   .mobile-content {
-    @apply p-4 pb-20;
+    @apply px-4 pt-4 pb-24;
   }
 
   .mobile-bottom-nav {
@@ -168,7 +169,7 @@ All colors MUST be HSL.
 
   /* Card styles */
   .sport-card {
-    @apply gradient-card rounded-xl p-4 shadow-card hover:shadow-primary transition-all duration-300 border border-border/50;
+    @apply gradient-card rounded-xl shadow-card hover:shadow-primary transition-all duration-300 border border-border/50;
   }
 
   .stat-card {
