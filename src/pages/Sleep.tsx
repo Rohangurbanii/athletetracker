@@ -98,6 +98,12 @@ export const Sleep = () => {
         setLoading(true);
       }
 
+      // Create abort controller for timeout
+      const abortController = new AbortController();
+      const timeoutId = setTimeout(() => {
+        abortController.abort();
+      }, 8000); // 8 second timeout
+
       // Get athlete data based on user role
       let athleteId = targetAthleteId;
       if (!athleteId && profile?.role === 'athlete') {
@@ -105,7 +111,10 @@ export const Sleep = () => {
           .from('athletes')
           .select('id')
           .eq('profile_id', profile.id)
+          .abortSignal(abortController.signal)
           .maybeSingle();
+
+        clearTimeout(timeoutId);
 
         if (athleteError) {
           console.error('Error fetching athlete:', athleteError);
@@ -131,6 +140,12 @@ export const Sleep = () => {
         return;
       }
 
+      // Create new abort controller for sleep logs query
+      const sleepAbortController = new AbortController();
+      const sleepTimeoutId = setTimeout(() => {
+        sleepAbortController.abort();
+      }, 8000); // 8 second timeout
+
       // Get sleep logs for the past 30 days
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -140,7 +155,10 @@ export const Sleep = () => {
         .select('*')
         .eq('athlete_id', athleteId)
         .gte('sleep_date', thirtyDaysAgo.toISOString().split('T')[0])
-        .order('sleep_date', { ascending: false });
+        .order('sleep_date', { ascending: false })
+        .abortSignal(sleepAbortController.signal);
+
+      clearTimeout(sleepTimeoutId);
 
       if (sleepError) {
         console.error('Error fetching sleep logs:', sleepError);
@@ -178,6 +196,9 @@ export const Sleep = () => {
       }
     } catch (error) {
       console.error('Error:', error);
+      if (error.name === 'AbortError') {
+        console.log('Request timed out');
+      }
       setSleepData([]);
     } finally {
       if (targetAthleteId) {
@@ -393,7 +414,7 @@ export const Sleep = () => {
               <Card className="sport-card">
                 <CardContent className="text-center py-12">
                   <Moon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No sleep data</h3>
+                  <h3 className="text-lg font-semibold mb-2">No sleep data found</h3>
                   <p className="text-muted-foreground mb-4">
                     {isCoach ? "This athlete hasn't logged any sleep data yet" : "Start tracking your sleep to improve recovery"}
                   </p>
