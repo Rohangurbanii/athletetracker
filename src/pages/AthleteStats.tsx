@@ -123,7 +123,7 @@ export default function AthleteStats() {
     }
     const rows = Object.entries(values)
       .filter(([, v]) => v !== '' && !isNaN(Number(v)))
-      .map(([athlete_id, v]) => ({ stat_id: selectedStatId, athlete_id, value: Number(v) }));
+      .map(([athlete_id, v]) => ({ stat_id: selectedStatId, athlete_id, value: String(Number(v)) }));
     if (rows.length === 0) {
       toast({ title: 'Nothing to save', description: 'Enter at least one value.' });
       return;

@@ -384,6 +384,51 @@ export type Database = {
           },
         ]
       }
+      practice_feedback: {
+        Row: {
+          athlete_id: string
+          club_id: string
+          content: string | null
+          created_at: string
+          feedback_date: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          athlete_id: string
+          club_id: string
+          content?: string | null
+          created_at?: string
+          feedback_date: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          athlete_id?: string
+          club_id?: string
+          content?: string | null
+          created_at?: string
+          feedback_date?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "practice_feedback_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practice_feedback_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       practice_sessions: {
         Row: {
           athlete_id: string
@@ -703,7 +748,7 @@ export type Database = {
           id: string
           stat_id: string
           updated_at: string
-          value: number
+          value: string
         }
         Insert: {
           athlete_id: string
@@ -711,7 +756,7 @@ export type Database = {
           id?: string
           stat_id: string
           updated_at?: string
-          value: number
+          value: string
         }
         Update: {
           athlete_id?: string
@@ -719,7 +764,7 @@ export type Database = {
           id?: string
           stat_id?: string
           updated_at?: string
-          value?: number
+          value?: string
         }
         Relationships: [
           {

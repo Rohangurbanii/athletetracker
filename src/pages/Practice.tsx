@@ -89,6 +89,10 @@ export const Practice = () => {
           const upcomingData = upcomingRes.data;
           const rpeData = rpeRes.data;
 
+          const practiceError = practiceRes.error;
+          const upcomingError = upcomingRes.error;
+          const rpeError = rpeRes.error;
+
           if (practiceError || rpeError || upcomingError) {
             console.error('Error fetching sessions:', { practiceError, rpeError, upcomingError });
             setSessions([]);
