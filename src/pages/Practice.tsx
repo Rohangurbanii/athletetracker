@@ -60,32 +60,34 @@ export const Practice = () => {
 
           setAthleteId(athleteData.id);
 
-          // Get scheduled practice sessions for the athlete (selected date)
-          const { data: practiceData, error: practiceError } = await supabase
-            .from('practice_sessions')
-            .select('*')
-            .eq('athlete_id', athleteData.id)
-            .eq('session_date', selectedDate)
-            .order('created_at', { ascending: false });
-
-          // Get upcoming practice sessions (next 7 days)
+          // Get scheduled practice sessions, upcoming sessions, and RPE logs in parallel
           const nextWeek = new Date();
           nextWeek.setDate(nextWeek.getDate() + 7);
-          const { data: upcomingData, error: upcomingError } = await supabase
-            .from('practice_sessions')
-            .select('*')
-            .eq('athlete_id', athleteData.id)
-            .gte('session_date', new Date().toISOString().split('T')[0])
-            .lte('session_date', nextWeek.toISOString().split('T')[0])
-            .order('session_date', { ascending: true });
+          const [practiceRes, upcomingRes, rpeRes] = await Promise.all([
+            supabase
+              .from('practice_sessions')
+              .select('*')
+              .eq('athlete_id', athleteData.id)
+              .eq('session_date', selectedDate)
+              .order('created_at', { ascending: false }),
+            supabase
+              .from('practice_sessions')
+              .select('*')
+              .eq('athlete_id', athleteData.id)
+              .gte('session_date', new Date().toISOString().split('T')[0])
+              .lte('session_date', nextWeek.toISOString().split('T')[0])
+              .order('session_date', { ascending: true }),
+            supabase
+              .from('rpe_logs')
+              .select('*')
+              .eq('athlete_id', athleteData.id)
+              .eq('log_date', selectedDate)
+              .order('created_at', { ascending: false }),
+          ]);
 
-          // Get RPE logs for the selected date
-          const { data: rpeData, error: rpeError } = await supabase
-            .from('rpe_logs')
-            .select('*')
-            .eq('athlete_id', athleteData.id)
-            .eq('log_date', selectedDate)
-            .order('created_at', { ascending: false });
+          const practiceData = practiceRes.data;
+          const upcomingData = upcomingRes.data;
+          const rpeData = rpeRes.data;
 
           if (practiceError || rpeError || upcomingError) {
             console.error('Error fetching sessions:', { practiceError, rpeError, upcomingError });

@@ -63,56 +63,31 @@ export const Dashboard = () => {
           .single();
 
         if (coach) {
-          const { data: batchesData } = await supabase
+          const { data: batchesRaw } = await supabase
             .from('batches')
-            .select('id, name, description, created_at')
+            .select(`
+              id, name, description, created_at,
+              batch_athletes(
+                athlete_id,
+                athletes(
+                  id,
+                  profiles!inner(full_name)
+                )
+              )
+            `)
             .eq('coach_id', coach.id)
             .order('created_at', { ascending: false });
 
-          // Get athlete count for each batch separately
-          const batchesWithAthletes = await Promise.all(
-            (batchesData || []).map(async (batch) => {
-              // First get the batch_athletes records
-              const { data: batchAthleteIds } = await supabase
-                .from('batch_athletes')
-                .select('athlete_id')
-                .eq('batch_id', batch.id);
-
-              // Then get athlete details for those IDs
-              const athleteIds = (batchAthleteIds || []).map(ba => ba.athlete_id);
-              
-              if (athleteIds.length === 0) {
-                return {
-                  ...batch,
-                  batch_athletes: []
-                };
-              }
-
-              const { data: athletes } = await supabase
-                .from('athletes')
-                .select(`
-                  id,
-                  profile:profiles!athletes_profile_id_fkey(
-                    full_name
-                  )
-                `)
-                .in('id', athleteIds);
-
-              return {
-                ...batch,
-                batch_athletes: (athletes || []).map(athlete => ({
-                  athlete
-                }))
-              };
-            })
-          );
+          const batchesWithAthletes = (batchesRaw || []).map((batch: any) => ({
+            ...batch,
+            batch_athletes: (batch.batch_athletes || []).map((ba: any) => ({
+              athlete: ba.athletes
+            })),
+          }));
 
           setBatches(batchesWithAthletes);
 
-          // Fetch attendance data for coaches
-          await fetchAttendanceData(coach.id, selectedDate);
-
-          // Fetch player feedback for selected date (club-wide)
+          // Attendance fetch handled by date effect
           const dateStr = format(selectedDate, 'yyyy-MM-dd');
           const { data: feedbackData } = await supabase
             .from('practice_feedback' as any)
@@ -143,23 +118,25 @@ export const Dashboard = () => {
         return;
       }
 
-      // Get this week's sessions
+      // Get this week's sessions and recent sleep in parallel
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
-      const { data: sessionsData } = await supabase
-        .from('rpe_logs')
-        .select('rpe_score, duration_minutes, activity_type, log_date')
-        .eq('athlete_id', athleteData.id)
-        .gte('log_date', weekAgo.toISOString().split('T')[0])
-        .order('log_date', { ascending: false });
-
-      // Get recent sleep data
-      const { data: sleepData } = await supabase
-        .from('sleep_logs')
-        .select('duration_hours, quality_rating, sleep_date')
-        .eq('athlete_id', athleteData.id)
-        .order('sleep_date', { ascending: false })
-        .limit(7);
+      const [sessionsRes, sleepRes] = await Promise.all([
+        supabase
+          .from('rpe_logs')
+          .select('rpe_score, duration_minutes, activity_type, log_date')
+          .eq('athlete_id', athleteData.id)
+          .gte('log_date', weekAgo.toISOString().split('T')[0])
+          .order('log_date', { ascending: false }),
+        supabase
+          .from('sleep_logs')
+          .select('duration_hours, quality_rating, sleep_date')
+          .eq('athlete_id', athleteData.id)
+          .order('sleep_date', { ascending: false })
+          .limit(7),
+      ]);
+      const sessionsData = sessionsRes.data;
+      const sleepData = sleepRes.data;
 
       // Calculate analytics
       const weekSessionsCount = sessionsData?.length || 0;
