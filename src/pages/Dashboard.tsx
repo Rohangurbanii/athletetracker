@@ -48,6 +48,7 @@ export const Dashboard = () => {
   const [batchToDelete, setBatchToDelete] = useState(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [attendanceData, setAttendanceData] = useState([]);
+  const [coachFeedback, setCoachFeedback] = useState([]);
 
   const fetchData = useCallback(async () => {
     if (!profile) return; // Guard clause inside useEffect instead
@@ -110,6 +111,22 @@ export const Dashboard = () => {
 
           // Fetch attendance data for coaches
           await fetchAttendanceData(coach.id, selectedDate);
+
+          // Fetch player feedback for selected date (club-wide)
+          const dateStr = format(selectedDate, 'yyyy-MM-dd');
+          const { data: feedbackData } = await supabase
+            .from('practice_feedback' as any)
+            .select(`
+              id, content, feedback_date, created_at,
+              athlete:athletes!inner(
+                id,
+                profiles!inner(full_name)
+              )
+            `)
+            .eq('club_id', profile.club_id)
+            .eq('feedback_date', dateStr)
+            .order('created_at', { ascending: false });
+          setCoachFeedback(feedbackData || []);
         }
         return; // Coach dashboard doesn't need athlete analytics
       }
@@ -735,39 +752,91 @@ export const Dashboard = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Recent Activity */}
-      <Card className="sport-card">
-        <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {recentActivity.length > 0 ? (
-            recentActivity.map((activity, index) => (
-              <div key={index} className="flex items-center space-x-3 p-3 bg-card/50 rounded-lg border border-border/50">
-                <div className={`gradient-${activity.type === 'session' ? 'primary' : 'secondary'} p-2 rounded-full`}>
-                  {activity.type === 'session' ? (
-                    <Activity className="h-4 w-4 text-primary-foreground" />
-                  ) : (
-                    <Moon className="h-4 w-4 text-accent-foreground" />
-                  )}
+      {/* Player Feedback (Coaches) or Recent Activity (Athletes) */}
+      {isCoach ? (
+        <Card className="sport-card">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span>Player Feedback</span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-[240px] justify-start text-left font-normal",
+                      !selectedDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarDays className="mr-2 h-4 w-4" />
+                    {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={setSelectedDate}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {coachFeedback.length > 0 ? (
+              coachFeedback.map((fb: any, index: number) => (
+                <div key={fb.id ?? index} className="p-3 bg-card/50 rounded-lg border border-border/50">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="font-medium">{fb.athlete?.profiles?.full_name || 'Athlete'}</p>
+                      <p className="text-sm text-muted-foreground">{new Date(fb.created_at || fb.feedback_date).toLocaleString()}</p>
+                    </div>
+                  </div>
+                  {fb.content && <p className="mt-2 text-sm">{fb.content}</p>}
                 </div>
-                <div className="flex-1">
-                  <p className="font-medium">{activity.activity}</p>
-                  <p className="text-sm text-muted-foreground">{activity.time}</p>
-                </div>
-                <Badge variant="outline">
-                  {activity.type === 'session' ? `RPE ${activity.rpe}` : `Quality: ${activity.quality}/5`}
-                </Badge>
+              ))
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No feedback for selected date</p>
               </div>
-            ))
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">No recent activity</p>
-              <p className="text-sm text-muted-foreground">Start logging sessions and sleep to see your activity here</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="sport-card">
+          <CardHeader>
+            <CardTitle>Recent Activity</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {recentActivity.length > 0 ? (
+              recentActivity.map((activity, index) => (
+                <div key={index} className="flex items-center space-x-3 p-3 bg-card/50 rounded-lg border border-border/50">
+                  <div className={`gradient-${activity.type === 'session' ? 'primary' : 'secondary'} p-2 rounded-full`}>
+                    {activity.type === 'session' ? (
+                      <Activity className="h-4 w-4 text-primary-foreground" />
+                    ) : (
+                      <Moon className="h-4 w-4 text-accent-foreground" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium">{activity.activity}</p>
+                    <p className="text-sm text-muted-foreground">{activity.time}</p>
+                  </div>
+                  <Badge variant="outline">
+                    {activity.type === 'session' ? `RPE ${activity.rpe}` : `Quality: ${activity.quality}/5`}
+                  </Badge>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No recent activity</p>
+                <p className="text-sm text-muted-foreground">Start logging sessions and sleep to see your activity here</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

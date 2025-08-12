@@ -11,6 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { Textarea } from "@/components/ui/textarea";
 
 export const Practice = () => {
   const { profile } = useAuth();
@@ -27,6 +28,9 @@ export const Practice = () => {
   const [rpeLogs, setRpeLogs] = useState([]);
   const [expandedSessions, setExpandedSessions] = useState(new Set());
   const [coachRpeInputs, setCoachRpeInputs] = useState({});
+  const [athleteId, setAthleteId] = useState<string | null>(null);
+  const [feedbackText, setFeedbackText] = useState('');
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
 
   const fetchSessions = async () => {
       if (!profile) return;
@@ -53,6 +57,8 @@ export const Practice = () => {
             setLoading(false);
             return;
           }
+
+          setAthleteId(athleteData.id);
 
           // Get scheduled practice sessions for the athlete (selected date)
           const { data: practiceData, error: practiceError } = await supabase
@@ -412,6 +418,29 @@ export const Practice = () => {
     }
   };
 
+  const submitPracticeFeedback = async () => {
+    if (!profile || !athleteId || !feedbackText.trim()) return;
+    try {
+      setIsSubmittingFeedback(true);
+      const { error } = await supabase
+        .from('practice_feedback' as any)
+        .insert({
+          athlete_id: athleteId,
+          club_id: profile.club_id,
+          feedback_date: selectedDate,
+          content: feedbackText.trim(),
+        });
+      if (error) throw error;
+      toast({ title: 'Feedback submitted', description: 'Your coaches can now view this.' });
+      setFeedbackText('');
+    } catch (e) {
+      console.error('Error submitting feedback:', e);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to submit feedback. Try again.' });
+    } finally {
+      setIsSubmittingFeedback(false);
+    }
+  };
+
   const openRpeDialog = (session) => {
     setSelectedSession(session);
     // If session has an existing RPE, set it as the default value
@@ -546,6 +575,38 @@ export const Practice = () => {
           </div>
         </CardContent>
       </Card>
+
+      {profile?.role === 'athlete' && (
+        <Card className="sport-card">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Practice Feedback</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Date: {new Date(selectedDate).toLocaleDateString()}
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="practice-feedback">Your feedback</Label>
+              <Textarea
+                id="practice-feedback"
+                placeholder="Share how the practice went, what felt good, what to improve..."
+                value={feedbackText}
+                onChange={(e) => setFeedbackText(e.target.value)}
+                className="min-h-[100px]"
+              />
+            </div>
+            <div className="flex justify-end">
+              <Button
+                onClick={submitPracticeFeedback}
+                disabled={isSubmittingFeedback || !feedbackText.trim() || !athleteId}
+                className="gradient-primary text-primary-foreground"
+              >
+                {isSubmittingFeedback ? 'Submitting...' : 'Submit Feedback'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Upcoming Practices Section (for athletes) */}
       {profile?.role === 'athlete' && upcomingPractices.length > 0 && (
