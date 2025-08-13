@@ -13,6 +13,7 @@ import { Calendar, Trophy, Moon, Target, Activity, TrendingUp, Users, ChevronDow
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import SleepRedFlags from '@/components/coach/SleepRedFlags';
 import { CreateBatchForm } from '@/components/forms/CreateBatchForm';
 import { EditBatchForm } from '@/components/forms/EditBatchForm';
 import { ClubCodeDisplay } from '@/components/ui/club-code-display';
@@ -508,6 +509,10 @@ export const Dashboard = () => {
           )}
         </CardContent>
       </Card>
+
+      {isCoach && (
+        <SleepRedFlags />
+      )}
 
       {/* Batch Management for Coaches */}
       {isCoach && (
