@@ -64,29 +64,46 @@ export const Dashboard = () => {
           .single();
 
         if (coach) {
-          const { data: batchesRaw } = await supabase
+          // First get batches for this coach
+          const { data: batchesRaw, error: batchesError } = await supabase
             .from('batches')
-            .select(`
-              id, name, description, created_at,
-              batch_athletes(
-                athlete_id,
-                athletes(
-                  id,
-                  profiles!inner(full_name)
-                )
-              )
-            `)
+            .select('id, name, description, created_at')
             .eq('coach_id', coach.id)
             .order('created_at', { ascending: false });
 
-          const batchesWithAthletes = (batchesRaw || []).map((batch: any) => ({
-            ...batch,
-            batch_athletes: (batch.batch_athletes || []).map((ba: any) => ({
-              athlete: ba.athletes
-            })),
-          }));
+          if (batchesError) {
+            console.error('Error fetching batches:', batchesError);
+            setBatches([]);
+          } else if (batchesRaw && batchesRaw.length > 0) {
+            // Get batch athletes for all batches
+            const batchIds = batchesRaw.map(b => b.id);
+            const { data: batchAthletes } = await supabase
+              .from('batch_athletes')
+              .select('athlete_id, batch_id')
+              .in('batch_id', batchIds);
 
-          setBatches(batchesWithAthletes);
+            // Get athlete details
+            const athleteIds = [...new Set((batchAthletes || []).map((ba: any) => ba.athlete_id))];
+            const { data: athletes } = await supabase
+              .from('athletes')
+              .select(`id, profiles!inner(full_name)`)
+              .in('id', athleteIds);
+
+            // Combine the data
+            const batchesWithAthletes = batchesRaw.map((batch: any) => ({
+              ...batch,
+              batch_athletes: (batchAthletes || [])
+                .filter((ba: any) => ba.batch_id === batch.id)
+                .map((ba: any) => ({
+                  athlete: athletes?.find((a: any) => a.id === ba.athlete_id)
+                }))
+                .filter((ba: any) => ba.athlete) // Only include valid athletes
+            }));
+
+            setBatches(batchesWithAthletes);
+          } else {
+            setBatches([]);
+          }
 
           // Attendance fetch handled by date effect
           const dateStr = format(selectedDate, 'yyyy-MM-dd');
