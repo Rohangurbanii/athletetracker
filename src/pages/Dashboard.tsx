@@ -510,10 +510,6 @@ export const Dashboard = () => {
         </CardContent>
       </Card>
 
-      {isCoach && (
-        <SleepRedFlags />
-      )}
-
       {/* Batch Management for Coaches */}
       {isCoach && (
         <Card className="sport-card">
@@ -607,6 +603,9 @@ export const Dashboard = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Sleep Red Flags for Coach */}
+      {isCoach && <SleepRedFlags />}
 
       {/* Analytics Stats - Moved below My Batches */}
       <div className="grid grid-cols-2 gap-4">
