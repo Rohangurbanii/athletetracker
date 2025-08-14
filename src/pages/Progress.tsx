@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress as ProgressBar } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckCircle, XCircle, Clock, Target, Users, Calendar, TrendingUp, TrendingDown, Activity, Moon, BarChart3, Star, Plus } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Target, Users, Calendar, TrendingUp, TrendingDown, Activity, Moon, BarChart3, Star, Plus, Info } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { SetGoalForm } from "@/components/forms/SetGoalForm";
@@ -305,13 +306,12 @@ const Progress = () => {
     }
   };
 
-  // Helper function to get status icon
-  const getStatusIcon = (status: string) => {
-    return status === 'completed' ? (
-      <CheckCircle className="h-4 w-4 text-green-500" />
-    ) : (
-      <Clock className="h-4 w-4 text-blue-500" />
-    );
+  // Helper function to get completion status icon
+  const getCompletionIcon = (goal: any) => {
+    if (goal.coach_completed || goal.progress_percentage === 100) {
+      return <CheckCircle className="h-5 w-5 text-green-500" />;
+    }
+    return <Clock className="h-5 w-5 text-blue-500" />;
   };
 
   // Toggle coach completion status
@@ -542,57 +542,116 @@ const Progress = () => {
             <div className="space-y-4">
               {goals.map((goal) => (
                 <Card key={goal.id} className="bg-card/50 backdrop-blur border-border/20">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          {getStatusIcon(goal.status)}
-                          <CardTitle className="text-lg">{goal.title}</CardTitle>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 flex-1">
+                        {getCompletionIcon(goal)}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-lg text-foreground truncate">{goal.title}</h3>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-sm text-muted-foreground">{goal.progress_percentage || 0}%</span>
+                            <ProgressBar value={goal.progress_percentage || 0} className="flex-1 h-2" />
+                          </div>
                         </div>
-                        <p className="text-muted-foreground text-sm">{goal.description}</p>
-                      </div>
-                      {profile?.role === 'coach' && (
-                        <Button
-                          variant={goal.coach_completed ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => toggleCoachCompletion(goal.id, goal.coach_completed)}
-                        >
-                          {goal.coach_completed ? "Completed" : "Mark Complete"}
-                        </Button>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div>
-                        <div className="flex justify-between text-sm mb-2">
-                          <span>Progress</span>
-                          <span>{goal.progress_percentage || 0}%</span>
-                        </div>
-                        <ProgressBar value={goal.progress_percentage || 0} className="w-full" />
                       </div>
                       
-                      {profile?.role === 'coach' && (
-                        <div className="flex gap-2">
-                          {[25, 50, 75, 100].map((percent) => (
-                            <Button
-                              key={percent}
-                              variant="outline"
-                              size="sm"
-                              onClick={() => updateProgress(goal.id, percent)}
-                              className="flex-1"
-                            >
-                              {percent}%
+                      <div className="flex items-center gap-2 ml-4">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              <Info className="h-4 w-4 mr-1" />
+                              Details
                             </Button>
-                          ))}
-                        </div>
-                      )}
-                      
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>Target: {goal.target_date ? new Date(goal.target_date).toLocaleDateString() : 'No date set'}</span>
-                        <span>Created: {goal.created_at ? new Date(goal.created_at).toLocaleDateString() : 'Unknown'}</span>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-[500px]">
+                            <DialogHeader>
+                              <DialogTitle className="flex items-center gap-2">
+                                {getCompletionIcon(goal)}
+                                {goal.title}
+                              </DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div>
+                                <h4 className="font-medium mb-2">Description</h4>
+                                <p className="text-muted-foreground">{goal.description || 'No description provided'}</p>
+                              </div>
+                              
+                              <div>
+                                <h4 className="font-medium mb-2">Progress</h4>
+                                <div className="space-y-2">
+                                  <div className="flex justify-between text-sm">
+                                    <span>Completion</span>
+                                    <span>{goal.progress_percentage || 0}%</span>
+                                  </div>
+                                  <ProgressBar value={goal.progress_percentage || 0} className="w-full" />
+                                </div>
+                              </div>
+                              
+                              <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                  <h4 className="font-medium mb-1">Target Date</h4>
+                                  <p className="text-muted-foreground">
+                                    {goal.target_date ? new Date(goal.target_date).toLocaleDateString() : 'No date set'}
+                                  </p>
+                                </div>
+                                <div>
+                                  <h4 className="font-medium mb-1">Created</h4>
+                                  <p className="text-muted-foreground">
+                                    {goal.created_at ? new Date(goal.created_at).toLocaleDateString() : 'Unknown'}
+                                  </p>
+                                </div>
+                              </div>
+                              
+                              {goal.priority && (
+                                <div>
+                                  <h4 className="font-medium mb-1">Priority</h4>
+                                  <Badge variant="outline">{goal.priority}</Badge>
+                                </div>
+                              )}
+                              
+                              {goal.coach_completed && (
+                                <div>
+                                  <h4 className="font-medium mb-1">Completion Status</h4>
+                                  <div className="flex items-center gap-2">
+                                    <CheckCircle className="h-4 w-4 text-green-500" />
+                                    <span className="text-sm text-muted-foreground">
+                                      Completed by coach on {goal.completed_by_coach_at ? new Date(goal.completed_by_coach_at).toLocaleDateString() : 'Unknown date'}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                        
+                        {profile?.role === 'coach' && (
+                          <Button
+                            variant={goal.coach_completed ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => toggleCoachCompletion(goal.id, goal.coach_completed)}
+                          >
+                            {goal.coach_completed ? "Completed" : "Complete"}
+                          </Button>
+                        )}
                       </div>
                     </div>
+                    
+                    {profile?.role === 'coach' && (
+                      <div className="flex gap-2 mt-4">
+                        {[25, 50, 75, 100].map((percent) => (
+                          <Button
+                            key={percent}
+                            variant="outline"
+                            size="sm"
+                            onClick={() => updateProgress(goal.id, percent)}
+                            className="flex-1"
+                            disabled={goal.coach_completed}
+                          >
+                            {percent}%
+                          </Button>
+                        ))}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
