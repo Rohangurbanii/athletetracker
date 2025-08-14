@@ -7,9 +7,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { format } from 'date-fns';
+import { format, startOfWeek, endOfWeek, addWeeks, subWeeks } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { Calendar, Trophy, Moon, Target, Activity, TrendingUp, Users, ChevronDown, Plus, Edit, Trash2, BarChart3, CalendarDays } from 'lucide-react';
+import { Calendar, Trophy, Moon, Target, Activity, TrendingUp, Users, ChevronDown, Plus, Edit, Trash2, BarChart3, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -48,6 +48,7 @@ export const Dashboard = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [batchToDelete, setBatchToDelete] = useState(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedWeek, setSelectedWeek] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [attendanceData, setAttendanceData] = useState([]);
   const [coachFeedback, setCoachFeedback] = useState([]);
 
@@ -105,20 +106,22 @@ export const Dashboard = () => {
             setBatches([]);
           }
 
-          // Attendance fetch handled by date effect
-          const dateStr = format(selectedDate, 'yyyy-MM-dd');
+          // Feedback fetch for selected week
+          const weekStart = format(selectedWeek, 'yyyy-MM-dd');
+          const weekEnd = format(endOfWeek(selectedWeek, { weekStartsOn: 1 }), 'yyyy-MM-dd');
           const { data: feedbackData } = await supabase
             .from('practice_feedback' as any)
             .select(`
-              id, content, feedback_date, created_at,
+              id, content, feedback_date,
               athlete:athletes!inner(
                 id,
                 profiles!inner(full_name)
               )
             `)
             .eq('club_id', profile.club_id)
-            .eq('feedback_date', dateStr)
-            .order('created_at', { ascending: false });
+            .gte('feedback_date', weekStart)
+            .lte('feedback_date', weekEnd)
+            .order('feedback_date', { ascending: false });
           setCoachFeedback(feedbackData || []);
         }
         return; // Coach dashboard doesn't need athlete analytics
@@ -210,7 +213,7 @@ export const Dashboard = () => {
     } catch (error) {
       console.error('Error fetching analytics:', error);
     }
-  }, [profile, selectedDate]);
+  }, [profile, selectedDate, selectedWeek]);
 
   const fetchAttendanceData = async (coachId, date) => {
     try {
@@ -756,29 +759,29 @@ export const Dashboard = () => {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span>Player Feedback</span>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-[240px] justify-start text-left font-normal",
-                      !selectedDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarDays className="mr-2 h-4 w-4" />
-                    {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarComponent
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={setSelectedDate}
-                    initialFocus
-                    className={cn("p-3 pointer-events-auto")}
-                  />
-                </PopoverContent>
-              </Popover>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedWeek(subWeeks(selectedWeek, 1))}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-[200px] justify-center text-sm"
+                  disabled
+                >
+                  {format(selectedWeek, 'MMM d')} - {format(endOfWeek(selectedWeek, { weekStartsOn: 1 }), 'MMM d, yyyy')}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedWeek(addWeeks(selectedWeek, 1))}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -788,7 +791,6 @@ export const Dashboard = () => {
                   <div className="flex items-start justify-between">
                     <div>
                       <p className="font-medium">{fb.athlete?.profiles?.full_name || 'Athlete'}</p>
-                      <p className="text-sm text-muted-foreground">{new Date(fb.created_at || fb.feedback_date).toLocaleString()}</p>
                     </div>
                   </div>
                   {fb.content && <p className="mt-2 text-sm">{fb.content}</p>}
@@ -796,7 +798,7 @@ export const Dashboard = () => {
               ))
             ) : (
               <div className="text-center py-8">
-                <p className="text-muted-foreground">No feedback for selected date</p>
+                <p className="text-muted-foreground">No feedback for selected week</p>
               </div>
             )}
           </CardContent>
