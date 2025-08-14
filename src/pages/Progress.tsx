@@ -541,7 +541,6 @@ const Progress = () => {
           ) : (
             <div className="space-y-4">
               {goals.map((goal) => {
-                const isLongDescription = goal.description && goal.description.length > 100;
                 return (
                   <Card key={goal.id} className="bg-card/50 backdrop-blur border-border/20">
                     <CardContent className="p-6">
@@ -550,12 +549,7 @@ const Progress = () => {
                           <div className="flex items-start gap-3 flex-1">
                             {getCompletionIcon(goal)}
                             <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-xl text-foreground mb-2">{goal.title}</h3>
-                              {goal.description && (
-                                <p className={`text-muted-foreground leading-relaxed ${isLongDescription ? 'text-base' : 'text-sm'}`}>
-                                  {goal.description}
-                                </p>
-                              )}
+                              <h3 className="font-semibold text-xl text-foreground">{goal.title}</h3>
                             </div>
                           </div>
                           
