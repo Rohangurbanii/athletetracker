@@ -106,7 +106,6 @@ const PracticeFeedbackCalendar = () => {
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
             Practice Feedback
           </span>
           <Popover>
@@ -118,7 +117,6 @@ const PracticeFeedbackCalendar = () => {
                   !selectedDate && 'text-muted-foreground'
                 )}
               >
-                <CalendarDays className="mr-2 h-4 w-4" />
                 {weekLabel}
               </Button>
             </PopoverTrigger>
@@ -177,14 +175,12 @@ const PracticeFeedbackCalendar = () => {
                             variant="outline"
                             className="ml-2 flex-shrink-0"
                           >
-                            <Eye className="h-3 w-3 mr-1" />
                             View
                           </Button>
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-md">
                           <DialogHeader>
                             <DialogTitle className="flex items-center space-x-2">
-                              <MessageSquare className="h-5 w-5" />
                               <span>Practice Feedback</span>
                             </DialogTitle>
                           </DialogHeader>

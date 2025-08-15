@@ -147,7 +147,6 @@ const SleepRedFlags = () => {
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span className="flex items-center gap-2">
-            <Moon className="h-5 w-5" />
             Sleep Red Flags
           </span>
           <Popover>
@@ -159,7 +158,6 @@ const SleepRedFlags = () => {
                   !selectedDate && 'text-muted-foreground'
                 )}
               >
-                <CalendarDays className="mr-2 h-4 w-4" />
                 {weekLabel}
               </Button>
             </PopoverTrigger>
