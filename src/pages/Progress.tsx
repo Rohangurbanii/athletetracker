@@ -236,18 +236,40 @@ const Progress = () => {
         return;
       }
 
+      // First get RPE logs with both athlete and coach ratings
       const { data: rpeData } = await supabase
         .from('rpe_logs')
         .select('log_date, activity_type, rpe_score, coach_rpe, notes, duration_minutes')
         .eq('athlete_id', targetAthleteId)
+        .not('rpe_score', 'is', null)
+        .not('coach_rpe', 'is', null)
         .order('log_date', { ascending: false })
         .limit(10);
+
+      // Get practice sessions for the same dates to get session names
+      const logDates = (rpeData || []).map(log => log.log_date);
+      let practiceSessionsMap: { [key: string]: string } = {};
+      
+      if (logDates.length > 0) {
+        const { data: sessions } = await supabase
+          .from('practice_sessions')
+          .select('session_date, notes')
+          .eq('athlete_id', targetAthleteId)
+          .in('session_date', logDates);
+        
+        // Create a map of date to session name
+        (sessions || []).forEach(session => {
+          if (session.notes) {
+            practiceSessionsMap[session.session_date] = session.notes;
+          }
+        });
+      }
 
       const comparisonData = (rpeData || [])
         .filter(log => log.rpe_score && log.coach_rpe)
         .map(log => ({
           date: log.log_date,
-          activityType: log.activity_type,
+          activityType: practiceSessionsMap[log.log_date] || log.activity_type || 'Practice Session',
           athleteRpe: log.rpe_score,
           coachRpe: log.coach_rpe,
           difference: log.rpe_score - log.coach_rpe,
