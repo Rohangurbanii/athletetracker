@@ -593,19 +593,6 @@ export const Dashboard = () => {
                         </Button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 mt-3">
-                      {batch.batch_athletes?.filter(ba => ba.athlete?.profiles?.full_name)
-                        .slice(0, 3).map((ba, index) => (
-                        <div key={index} className="text-xs bg-accent px-2 py-1 rounded">
-                          {ba.athlete?.profiles?.full_name}
-                        </div>
-                      ))}
-                      {(batch.batch_athletes?.filter(ba => ba.athlete?.profiles?.full_name).length || 0) > 3 && (
-                        <div className="text-xs text-muted-foreground">
-                          +{(batch.batch_athletes?.filter(ba => ba.athlete?.profiles?.full_name).length || 0) - 3} more
-                        </div>
-                      )}
-                    </div>
                     {batch.batch_athletes?.filter(ba => ba.athlete?.profiles?.full_name).length > 0 && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
