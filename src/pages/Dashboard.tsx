@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import SleepRedFlags from '@/components/coach/SleepRedFlags';
+import PracticeFeedbackCalendar from '@/components/coach/PracticeFeedbackCalendar';
 import { CreateBatchForm } from '@/components/forms/CreateBatchForm';
 import { EditBatchForm } from '@/components/forms/EditBatchForm';
 import { ClubCodeDisplay } from '@/components/ui/club-code-display';
@@ -755,54 +756,7 @@ export const Dashboard = () => {
 
       {/* Player Feedback (Coaches) or Recent Activity (Athletes) */}
       {isCoach ? (
-        <Card className="sport-card">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Player Feedback</span>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedWeek(subWeeks(selectedWeek, 1))}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-[200px] justify-center text-sm"
-                  disabled
-                >
-                  {format(selectedWeek, 'MMM d')} - {format(endOfWeek(selectedWeek, { weekStartsOn: 1 }), 'MMM d, yyyy')}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedWeek(addWeeks(selectedWeek, 1))}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {coachFeedback.length > 0 ? (
-              coachFeedback.map((fb: any, index: number) => (
-                <div key={fb.id ?? index} className="p-3 bg-card/50 rounded-lg border border-border/50">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-medium">{fb.athlete?.profiles?.full_name || 'Athlete'}</p>
-                    </div>
-                  </div>
-                  {fb.content && <p className="mt-2 text-sm">{fb.content}</p>}
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">No feedback for selected week</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <PracticeFeedbackCalendar />
       ) : (
         <Card className="sport-card">
           <CardHeader>
