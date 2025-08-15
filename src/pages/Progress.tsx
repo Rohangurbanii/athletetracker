@@ -253,15 +253,14 @@ const Progress = () => {
       if (logDates.length > 0) {
         const { data: sessions } = await supabase
           .from('practice_sessions')
-          .select('session_date, notes')
+          .select('session_date, notes, session_type')
           .eq('athlete_id', targetAthleteId)
           .in('session_date', logDates);
         
-        // Create a map of date to session name
+        // Create a map of date to practice title (using notes as practice title)
         (sessions || []).forEach(session => {
-          if (session.notes) {
-            practiceSessionsMap[session.session_date] = session.notes;
-          }
+          // The practice title is stored in the notes field when coaches create sessions
+          practiceSessionsMap[session.session_date] = session.notes || session.session_type || 'Practice Session';
         });
       }
 
