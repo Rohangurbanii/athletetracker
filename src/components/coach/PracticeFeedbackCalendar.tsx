@@ -163,21 +163,13 @@ const PracticeFeedbackCalendar = () => {
                       key={item.id}
                       className="flex items-start justify-between p-3 bg-card/50 rounded-lg border border-border/50"
                     >
-                      <div className="flex items-start gap-3 flex-1">
-                        <div className="w-8 h-8 rounded-md bg-accent flex items-center justify-center">
-                          <MessageSquare className="h-4 w-4" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm">{item.athleteName}</p>
-                          <p className="text-xs text-muted-foreground mb-2">
-                            {format(new Date(item.created_at), 'h:mm a')}
-                          </p>
-                          <p className="text-sm text-muted-foreground line-clamp-2">
-                            {item.content.substring(0, 100)}
-                            {item.content.length > 100 && '...'}
-                          </p>
-                        </div>
-                      </div>
+                       <div className="flex-1 min-w-0">
+                         <p className="font-medium text-sm">{item.athleteName}</p>
+                         <p className="text-sm text-muted-foreground line-clamp-2">
+                           {item.content.substring(0, 100)}
+                           {item.content.length > 100 && '...'}
+                         </p>
+                       </div>
                       <Dialog>
                         <DialogTrigger asChild>
                           <Button
