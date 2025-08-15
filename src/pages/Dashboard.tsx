@@ -269,11 +269,11 @@ export const Dashboard = () => {
         const hasCoachRpe = rpeData?.find(rpe => rpe.athlete_id === athlete.id);
         return {
           athlete_id: athlete.id,
-          athlete_name: athlete.profiles?.full_name || 'Unknown',
+          athlete_name: athlete.profiles?.full_name || '',
           status: hasCoachRpe ? 'attended' : 'absent',
           coach_rpe: hasCoachRpe?.coach_rpe
         };
-      });
+      }).filter(athlete => athlete.athlete_name); // Only show athletes with names
 
       setAttendanceData(attendance);
     } catch (error) {
@@ -594,14 +594,15 @@ export const Dashboard = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 mt-3">
-                      {batch.batch_athletes?.slice(0, 3).map((ba, index) => (
+                      {batch.batch_athletes?.filter(ba => ba.athlete?.profiles?.full_name)
+                        .slice(0, 3).map((ba, index) => (
                         <div key={index} className="text-xs bg-accent px-2 py-1 rounded">
-                          {ba.athlete?.profile?.full_name || 'Unknown'}
+                          {ba.athlete?.profiles?.full_name}
                         </div>
                       ))}
-                      {(batch.batch_athletes?.length || 0) > 3 && (
+                      {(batch.batch_athletes?.filter(ba => ba.athlete?.profiles?.full_name).length || 0) > 3 && (
                         <div className="text-xs text-muted-foreground">
-                          +{(batch.batch_athletes?.length || 0) - 3} more
+                          +{(batch.batch_athletes?.filter(ba => ba.athlete?.profiles?.full_name).length || 0) - 3} more
                         </div>
                       )}
                     </div>
