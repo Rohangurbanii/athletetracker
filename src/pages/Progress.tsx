@@ -257,10 +257,17 @@ const Progress = () => {
           .eq('athlete_id', targetAthleteId)
           .in('session_date', logDates);
         
-        // Create a map of date to practice title (using notes as practice title)
+        // Create a map of date to practice title (extract just the title, not full notes)
         (sessions || []).forEach(session => {
-          // The practice title is stored in the notes field when coaches create sessions
-          practiceSessionsMap[session.session_date] = session.notes || session.session_type || 'Practice Session';
+          // Extract just the practice name from notes (first line or before colon)
+          let practiceTitle = session.session_type || 'Practice Session';
+          if (session.notes) {
+            // Try to extract just the title part (first line or part before colon/details)
+            const firstLine = session.notes.split('\n')[0].trim();
+            const titlePart = firstLine.split(':')[0].trim();
+            practiceTitle = titlePart || session.session_type || 'Practice Session';
+          }
+          practiceSessionsMap[session.session_date] = practiceTitle;
         });
       }
 
