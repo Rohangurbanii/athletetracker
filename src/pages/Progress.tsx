@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress as ProgressBar } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CheckCircle, XCircle, Clock, Target, Users, Calendar, TrendingUp, TrendingDown, Activity, Moon, BarChart3, Star, Plus, Info } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -776,42 +777,77 @@ const Progress = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-3">
-                      {rpeComparisonData.map((entry, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3">
-                              <div className="text-sm font-medium">{entry.activityType}</div>
-                              <Badge variant="outline" className="text-xs">
-                                {new Date(entry.date).toLocaleDateString()}
-                              </Badge>
-                            </div>
-                            {entry.notes && (
-                              <p className="text-xs text-muted-foreground mt-1">{entry.notes}</p>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-4 text-sm">
-                            <div className="text-center">
-                              <div className="text-xs text-muted-foreground">Athlete</div>
-                              <div className="font-medium">{entry.athleteRpe}</div>
-                            </div>
-                            <div className="text-center">
-                              <div className="text-xs text-muted-foreground">Coach</div>
-                              <div className="font-medium">{entry.coachRpe}</div>
-                            </div>
-                            <div className="text-center">
-                              <div className="text-xs text-muted-foreground">Diff</div>
-                              <div className={`font-medium ${
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Practice Title</TableHead>
+                          <TableHead className="text-center">Athlete RPE</TableHead>
+                          <TableHead className="text-center">Coach RPE</TableHead>
+                          <TableHead className="text-center">Diff</TableHead>
+                          <TableHead className="text-center">Details</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {rpeComparisonData.map((entry, index) => (
+                          <TableRow key={index}>
+                            <TableCell className="font-medium">{entry.activityType}</TableCell>
+                            <TableCell className="text-center">{entry.athleteRpe}</TableCell>
+                            <TableCell className="text-center">{entry.coachRpe}</TableCell>
+                            <TableCell className="text-center">
+                              <span className={`font-medium ${
                                 entry.difference > 0 ? 'text-red-500' : 
                                 entry.difference < 0 ? 'text-green-500' : 'text-muted-foreground'
                               }`}>
                                 {entry.difference > 0 ? '+' : ''}{entry.difference}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button variant="outline" size="sm">
+                                    Details
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-md">
+                                  <DialogHeader>
+                                    <DialogTitle>Session Details</DialogTitle>
+                                  </DialogHeader>
+                                  <div className="space-y-4">
+                                    <div>
+                                      <h4 className="font-medium mb-1">Practice</h4>
+                                      <p className="text-sm">{entry.activityType}</p>
+                                    </div>
+                                    <div>
+                                      <h4 className="font-medium mb-1">Date</h4>
+                                      <p className="text-sm">{new Date(entry.date).toLocaleDateString()}</p>
+                                    </div>
+                                    <div>
+                                      <h4 className="font-medium mb-1">RPE Scores</h4>
+                                      <div className="flex justify-between items-center text-sm">
+                                        <span>Athlete: <strong>{entry.athleteRpe}</strong></span>
+                                        <span>Coach: <strong>{entry.coachRpe}</strong></span>
+                                        <span className={`font-medium ${
+                                          entry.difference > 0 ? 'text-red-500' : 
+                                          entry.difference < 0 ? 'text-green-500' : 'text-muted-foreground'
+                                        }`}>
+                                          Diff: {entry.difference > 0 ? '+' : ''}{entry.difference}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    {entry.notes && (
+                                      <div>
+                                        <h4 className="font-medium mb-1">Notes</h4>
+                                        <p className="text-sm text-muted-foreground">{entry.notes}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </CardContent>
                 </Card>
               )}
