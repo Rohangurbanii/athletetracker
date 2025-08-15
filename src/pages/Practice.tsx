@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from "@/components/ui/textarea";
+import PracticeFeedbackCalendar from '@/components/coach/PracticeFeedbackCalendar';
 
 export const Practice = () => {
   const { profile } = useAuth();
@@ -612,6 +613,11 @@ export const Practice = () => {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Practice Feedback Calendar for Coaches */}
+      {profile?.role === 'coach' && (
+        <PracticeFeedbackCalendar />
       )}
 
       {/* Upcoming Practices Section (for athletes) */}
