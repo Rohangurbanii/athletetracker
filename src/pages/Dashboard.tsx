@@ -606,6 +606,28 @@ export const Dashboard = () => {
                         </div>
                       )}
                     </div>
+                    {batch.batch_athletes?.filter(ba => ba.athlete?.profiles?.full_name).length > 0 && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="mt-3 w-full">
+                            <Users className="h-4 w-4 mr-2" />
+                            View All Athletes
+                            <ChevronDown className="h-4 w-4 ml-2" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent 
+                          align="start" 
+                          className="w-56 bg-background border border-border shadow-lg z-50"
+                        >
+                          {batch.batch_athletes?.filter(ba => ba.athlete?.profiles?.full_name).map((ba, index) => (
+                            <DropdownMenuItem key={index} className="py-2">
+                              <Users className="h-4 w-4 mr-2" />
+                              {ba.athlete?.profiles?.full_name}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </div>
                 ))}
               </div>
