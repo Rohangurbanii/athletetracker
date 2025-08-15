@@ -353,19 +353,16 @@ export const Dashboard = () => {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button className="gradient-primary text-primary-foreground font-semibold h-12">
-                    <Users className="h-5 w-5 mr-2" />
                     Batch Management
                     <ChevronDown className="h-4 w-4 ml-2" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-56">
                   <DropdownMenuItem onClick={() => setShowCreateBatch(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
                     Create New Batch
                   </DropdownMenuItem>
                   {batches.map((batch) => (
                     <DropdownMenuItem key={batch.id}>
-                      <Users className="h-4 w-4 mr-2" />
                       {batch.name} ({batch.batch_athletes?.length || 0} athletes)
                     </DropdownMenuItem>
                   ))}
@@ -377,7 +374,6 @@ export const Dashboard = () => {
                 className="h-12"
                 onClick={() => navigate('/tournaments')}
               >
-                <Trophy className="h-5 w-5 mr-2" />
                 Manage Tournaments
               </Button>
               
@@ -386,7 +382,6 @@ export const Dashboard = () => {
                 className="h-12"
                 onClick={() => navigate('/athlete-stats')}
               >
-                <BarChart3 className="h-5 w-5 mr-2" />
                 Athlete Stats
               </Button>
               
@@ -395,7 +390,6 @@ export const Dashboard = () => {
                 className="h-12"
                 onClick={() => navigate('/schedule-practice')}
               >
-                <Calendar className="h-5 w-5 mr-2" />
                 Schedule Practice
               </Button>
             </>
@@ -405,7 +399,6 @@ export const Dashboard = () => {
                 className="gradient-primary text-primary-foreground font-semibold h-12"
                 onClick={() => navigate('/my-stats')}
               >
-                <BarChart3 className="h-5 w-5 mr-2" />
                 My Stats
               </Button>
               
@@ -414,7 +407,6 @@ export const Dashboard = () => {
                 className="h-12"
                 onClick={() => navigate('/log-sleep')}
               >
-                <Moon className="h-5 w-5 mr-2" />
                 Log Sleep
               </Button>
               
@@ -423,7 +415,6 @@ export const Dashboard = () => {
                 className="h-12"
                 onClick={() => navigate('/tournaments')}
               >
-                <Trophy className="h-5 w-5 mr-2" />
                 View Tournaments
               </Button>
               
@@ -432,7 +423,6 @@ export const Dashboard = () => {
                 className="h-12"
                 onClick={() => navigate('/set-goal')}
               >
-                <Target className="h-5 w-5 mr-2" />
                 Set Goals
               </Button>
             </>
@@ -445,7 +435,6 @@ export const Dashboard = () => {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <Calendar className="h-5 w-5" />
               <span>{isCoach ? 'Attendance' : "Today's Schedule"}</span>
             </div>
             {isCoach && (
@@ -497,7 +486,6 @@ export const Dashboard = () => {
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-8">
-                  <Users className="h-12 w-12 text-muted-foreground mb-4" />
                   <p className="text-muted-foreground">No athletes found for selected date</p>
                   <p className="text-sm text-muted-foreground">Make sure you have athletes assigned to your batches</p>
                 </div>
@@ -522,7 +510,6 @@ export const Dashboard = () => {
               ))
             ) : (
               <div className="text-center py-8">
-                <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground">No sessions scheduled for today</p>
                 <p className="text-sm text-muted-foreground">Check your practice schedule or coach announcements</p>
               </div>
@@ -537,15 +524,13 @@ export const Dashboard = () => {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
                 My Batches
               </span>
-              <Button 
+                <Button 
                 size="sm" 
                 onClick={() => setShowCreateBatch(true)}
                 className="gradient-primary text-primary-foreground"
               >
-                <Plus className="h-4 w-4 mr-2" />
                 Create Batch
               </Button>
             </CardTitle>
@@ -579,7 +564,7 @@ export const Dashboard = () => {
                             setShowEditBatch(true);
                           }}
                         >
-                          <Edit className="h-4 w-4" />
+                          Edit
                         </Button>
                         <Button
                           size="sm"
@@ -589,7 +574,7 @@ export const Dashboard = () => {
                             setShowDeleteDialog(true);
                           }}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          Delete
                         </Button>
                       </div>
                     </div>
@@ -597,7 +582,6 @@ export const Dashboard = () => {
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="outline" size="sm" className="mt-3 w-full">
-                            <Users className="h-4 w-4 mr-2" />
                             View All Athletes
                             <ChevronDown className="h-4 w-4 ml-2" />
                           </Button>
@@ -606,9 +590,8 @@ export const Dashboard = () => {
                           align="start" 
                           className="w-56 bg-background border border-border shadow-lg z-50"
                         >
-                          {batch.batch_athletes?.filter(ba => ba.athlete?.profiles?.full_name).map((ba, index) => (
+                           {batch.batch_athletes?.filter(ba => ba.athlete?.profiles?.full_name).map((ba, index) => (
                             <DropdownMenuItem key={index} className="py-2">
-                              <Users className="h-4 w-4 mr-2" />
                               {ba.athlete?.profiles?.full_name}
                             </DropdownMenuItem>
                           ))}
@@ -620,13 +603,11 @@ export const Dashboard = () => {
               </div>
             ) : (
               <div className="text-center py-8">
-                <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground">No batches created yet</p>
                 <p className="text-sm text-muted-foreground mb-4">
                   Create your first batch to organize your athletes
                 </p>
                 <Button onClick={() => setShowCreateBatch(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
                   Create Your First Batch
                 </Button>
               </div>
@@ -643,9 +624,6 @@ export const Dashboard = () => {
         <Card className="sport-card">
           <CardContent className="p-4">
             <div className="flex items-center space-x-3">
-              <div className="gradient-primary p-2 rounded-lg">
-                <Activity className="h-5 w-5 text-primary-foreground" />
-              </div>
               <div>
                 <p className="text-sm text-muted-foreground">This Week</p>
                 <p className="text-xl font-bold">{analytics.weekSessions} Sessions</p>
@@ -657,9 +635,6 @@ export const Dashboard = () => {
         <Card className="sport-card">
           <CardContent className="p-4">
             <div className="flex items-center space-x-3">
-              <div className="gradient-secondary p-2 rounded-lg">
-                <TrendingUp className="h-5 w-5 text-accent-foreground" />
-              </div>
               <div>
                 <p className="text-sm text-muted-foreground">Avg RPE</p>
                 <p className="text-xl font-bold">{analytics.avgRPE || 'N/A'}</p>
@@ -776,13 +751,6 @@ export const Dashboard = () => {
             {recentActivity.length > 0 ? (
               recentActivity.map((activity, index) => (
                 <div key={index} className="flex items-center space-x-3 p-3 bg-card/50 rounded-lg border border-border/50">
-                  <div className={`gradient-${activity.type === 'session' ? 'primary' : 'secondary'} p-2 rounded-full`}>
-                    {activity.type === 'session' ? (
-                      <Activity className="h-4 w-4 text-primary-foreground" />
-                    ) : (
-                      <Moon className="h-4 w-4 text-accent-foreground" />
-                    )}
-                  </div>
                   <div className="flex-1">
                     <p className="font-medium">{activity.activity}</p>
                     <p className="text-sm text-muted-foreground">{activity.time}</p>
