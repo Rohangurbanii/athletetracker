@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { SetGoalForm } from "@/components/forms/SetGoalForm";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const Progress = () => {
   const { profile } = useAuth();
@@ -799,83 +800,89 @@ const Progress = () => {
               {rpeComparisonData.length > 0 && (
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Star className="h-5 w-5" />
-                      RPE Comparison
-                    </CardTitle>
+                     <CardTitle className="flex items-center gap-2">
+                       RPE Comparison
+                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Practice Title</TableHead>
-                          <TableHead className="text-center">Athlete RPE</TableHead>
-                          <TableHead className="text-center">Coach RPE</TableHead>
-                          <TableHead className="text-center">Diff</TableHead>
-                          <TableHead className="text-center">Details</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {rpeComparisonData.map((entry, index) => (
-                          <TableRow key={index}>
-                            <TableCell className="font-medium">{entry.activityType}</TableCell>
-                            <TableCell className="text-center">{entry.athleteRpe}</TableCell>
-                            <TableCell className="text-center">{entry.coachRpe}</TableCell>
-                            <TableCell className="text-center">
-                              <span className={`font-medium ${
-                                entry.difference > 0 ? 'text-red-500' : 
-                                entry.difference < 0 ? 'text-green-500' : 'text-muted-foreground'
-                              }`}>
-                                {entry.difference > 0 ? '+' : ''}{entry.difference}
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Dialog>
-                                <DialogTrigger asChild>
-                                  <Button variant="outline" size="sm">
-                                    Details
-                                  </Button>
-                                </DialogTrigger>
-                                <DialogContent className="max-w-md">
-                                  <DialogHeader>
-                                    <DialogTitle>Session Details</DialogTitle>
-                                  </DialogHeader>
-                                  <div className="space-y-4">
-                                    <div>
-                                      <h4 className="font-medium mb-1">Practice</h4>
-                                      <p className="text-sm">{entry.activityType}</p>
-                                    </div>
-                                    <div>
-                                      <h4 className="font-medium mb-1">Date</h4>
-                                      <p className="text-sm">{new Date(entry.date).toLocaleDateString()}</p>
-                                    </div>
-                                    <div>
-                                      <h4 className="font-medium mb-1">RPE Scores</h4>
-                                      <div className="flex justify-between items-center text-sm">
-                                        <span>Athlete: <strong>{entry.athleteRpe}</strong></span>
-                                        <span>Coach: <strong>{entry.coachRpe}</strong></span>
-                                        <span className={`font-medium ${
-                                          entry.difference > 0 ? 'text-red-500' : 
-                                          entry.difference < 0 ? 'text-green-500' : 'text-muted-foreground'
-                                        }`}>
-                                          Diff: {entry.difference > 0 ? '+' : ''}{entry.difference}
-                                        </span>
-                                      </div>
-                                    </div>
-                                    {entry.notes && (
-                                      <div>
-                                        <h4 className="font-medium mb-1">Notes</h4>
-                                        <p className="text-sm text-muted-foreground">{entry.notes}</p>
-                                      </div>
-                                    )}
-                                  </div>
-                                </DialogContent>
-                              </Dialog>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                   <CardContent>
+                     <ScrollArea className="h-[400px]">
+                       <Table>
+                         <TableHeader>
+                           <TableRow>
+                             <TableHead>
+                               <div className="flex items-center gap-2">
+                                 <Info className="h-4 w-4" />
+                                 Practice Title
+                               </div>
+                             </TableHead>
+                             <TableHead className="text-center">Athlete RPE</TableHead>
+                             <TableHead className="text-center">Coach RPE</TableHead>
+                             <TableHead className="text-center">Diff</TableHead>
+                             <TableHead className="text-center">Details</TableHead>
+                           </TableRow>
+                         </TableHeader>
+                         <TableBody>
+                           {rpeComparisonData.map((entry, index) => (
+                             <TableRow key={index}>
+                               <TableCell className="font-medium">{entry.activityType}</TableCell>
+                               <TableCell className="text-center">{entry.athleteRpe}</TableCell>
+                               <TableCell className="text-center">{entry.coachRpe}</TableCell>
+                               <TableCell className="text-center">
+                                 <span className={`font-medium ${
+                                   entry.difference > 0 ? 'text-red-500' : 
+                                   entry.difference < 0 ? 'text-green-500' : 'text-muted-foreground'
+                                 }`}>
+                                   {entry.difference > 0 ? '+' : ''}{entry.difference}
+                                 </span>
+                               </TableCell>
+                               <TableCell className="text-center">
+                                 <Dialog>
+                                   <DialogTrigger asChild>
+                                     <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                       <Info className="h-4 w-4" />
+                                     </Button>
+                                   </DialogTrigger>
+                                   <DialogContent className="max-w-md">
+                                     <DialogHeader>
+                                       <DialogTitle>Session Details</DialogTitle>
+                                     </DialogHeader>
+                                     <div className="space-y-4">
+                                       <div>
+                                         <h4 className="font-medium mb-1">Practice</h4>
+                                         <p className="text-sm">{entry.activityType}</p>
+                                       </div>
+                                       <div>
+                                         <h4 className="font-medium mb-1">Date</h4>
+                                         <p className="text-sm">{new Date(entry.date).toLocaleDateString()}</p>
+                                       </div>
+                                       <div>
+                                         <h4 className="font-medium mb-1">RPE Scores</h4>
+                                         <div className="flex justify-between items-center text-sm">
+                                           <span>Athlete: <strong>{entry.athleteRpe}</strong></span>
+                                           <span>Coach: <strong>{entry.coachRpe}</strong></span>
+                                           <span className={`font-medium ${
+                                             entry.difference > 0 ? 'text-red-500' : 
+                                             entry.difference < 0 ? 'text-green-500' : 'text-muted-foreground'
+                                           }`}>
+                                             Diff: {entry.difference > 0 ? '+' : ''}{entry.difference}
+                                           </span>
+                                         </div>
+                                       </div>
+                                       {entry.notes && (
+                                         <div>
+                                           <h4 className="font-medium mb-1">Notes</h4>
+                                           <p className="text-sm text-muted-foreground">{entry.notes}</p>
+                                         </div>
+                                       )}
+                                     </div>
+                                   </DialogContent>
+                                 </Dialog>
+                               </TableCell>
+                             </TableRow>
+                           ))}
+                         </TableBody>
+                       </Table>
+                     </ScrollArea>
                   </CardContent>
                 </Card>
               )}
