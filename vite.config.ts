@@ -46,9 +46,6 @@ export default defineConfig(({ mode }) => ({
           {
             urlPattern: /^https:\/\/micnbqtrzfxavalhqbhp\.supabase\.co\/auth\/v1\/.*$/i,
             handler: 'NetworkOnly',
-            options: {
-              networkTimeoutSeconds: 10,
-            },
           },
         ],
       },
