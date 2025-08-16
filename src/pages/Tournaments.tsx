@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -54,269 +54,92 @@ export const Tournaments = () => {
   const [showCommentsModal, setShowCommentsModal] = useState<{ id: string; name: string } | null>(null);
   const [athleteResults, setAthleteResults] = useState<Record<string, boolean>>({});
 
+  // Cache coach and athlete data to avoid repeated fetches
+  const [userRoleData, setUserRoleData] = useState<{
+    coachId?: string;
+    athleteId?: string;
+    athleteIds?: string[];
+  }>({});
+
   useEffect(() => {
-    fetchTournaments();
+    initializeUserData();
   }, [profile]);
 
-  const fetchTournaments = async () => {
+  useEffect(() => {
+    if (Object.keys(userRoleData).length > 0) {
+      fetchTournaments();
+    }
+  }, [profile, userRoleData]);
+
+  const initializeUserData = async () => {
     if (!profile) return;
+
+    try {
+      if (isCoach) {
+        // Get coach data first
+        const { data: coachData } = await supabase
+          .from('coaches')
+          .select('id')
+          .eq('profile_id', profile.id)
+          .single();
+
+        if (coachData) {
+          // Get batches for this coach
+          const { data: batchData } = await supabase
+            .from('batches')
+            .select('id')
+            .eq('coach_id', coachData.id);
+
+          const batchIds = batchData?.map(b => b.id) || [];
+
+          if (batchIds.length > 0) {
+            // Get athletes for these batches
+            const { data: batchAthleteData } = await supabase
+              .from('batch_athletes')
+              .select('athlete_id')
+              .in('batch_id', batchIds);
+
+            const athleteIds = batchAthleteData?.map(ba => ba.athlete_id) || [];
+            const uniqueAthleteIds = [...new Set(athleteIds)]; // Remove duplicates
+
+            setUserRoleData({
+              coachId: coachData.id,
+              athleteIds: uniqueAthleteIds
+            });
+          } else {
+            setUserRoleData({
+              coachId: coachData.id,
+              athleteIds: []
+            });
+          }
+        }
+      } else if (isAthlete) {
+        const { data: athleteData } = await supabase
+          .from('athletes')
+          .select('id')
+          .eq('profile_id', profile.id)
+          .single();
+
+        if (athleteData) {
+          setUserRoleData({ athleteId: athleteData.id });
+        }
+      }
+    } catch (error) {
+      console.error('Error initializing user data:', error);
+    }
+  };
+
+  const fetchTournaments = async () => {
+    if (!profile || Object.keys(userRoleData).length === 0) return;
 
     try {
       setLoading(true);
 
-      // For coaches, we need to show tournaments they can still comment on, regardless of date
-      // For athletes, only show future tournaments
-      let upcomingQuery = supabase
-        .from('tournaments')
-        .select('*');
-
-      if (isAthlete) {
-        // Athletes only see future tournaments
-        upcomingQuery = upcomingQuery.gte('start_date', new Date().toISOString().split('T')[0]);
-        
-        // Get athlete ID to filter athlete-created tournaments
-        const { data: athleteData } = await supabase
-          .from('athletes')
-          .select('id')
-          .eq('profile_id', profile.id)
-          .single();
-
-        if (athleteData) {
-          // Athletes see club tournaments OR their own created tournaments
-          upcomingQuery = upcomingQuery.or(`created_by_athlete_id.is.null,created_by_athlete_id.eq.${athleteData.id}`);
-        }
-      } else if (isCoach) {
-        // Get coach's athletes to see their tournaments
-        const { data: coachData } = await supabase
-          .from('coaches')
-          .select('id')
-          .eq('profile_id', profile.id)
-          .single();
-
-        if (coachData) {
-          const { data: batchData } = await supabase
-            .from('batches')
-            .select('id')
-            .eq('coach_id', coachData.id);
-
-          const batchIds = batchData?.map(b => b.id) || [];
-
-          const { data: batchAthleteData } = await supabase
-            .from('batch_athletes')
-            .select('athlete_id')
-            .in('batch_id', batchIds);
-
-          const athleteIds = batchAthleteData?.map(ba => ba.athlete_id) || [];
-
-          if (athleteIds.length > 0) {
-            // Coaches see club tournaments OR tournaments created by their athletes
-            upcomingQuery = upcomingQuery.or(`created_by_athlete_id.is.null,created_by_athlete_id.in.(${athleteIds.join(',')})`);
-          } else {
-            // If coach has no athletes, only show club tournaments
-            upcomingQuery = upcomingQuery.is('created_by_athlete_id', null);
-          }
-        }
-      }
-      
-      upcomingQuery = upcomingQuery.order('start_date', { ascending: true });
-
-      // If athlete, exclude tournaments they have submitted results for
-      if (isAthlete && profile) {
-        const { data: athleteData } = await supabase
-          .from('athletes')
-          .select('id')
-          .eq('profile_id', profile.id)
-          .single();
-
-        if (athleteData) {
-          const { data: resultsData } = await supabase
-            .from('tournament_results')
-            .select('tournament_id')
-            .eq('athlete_id', athleteData.id)
-            .not('athlete_completed_at', 'is', null);
-
-          const completedTournamentIds = (resultsData || []).map(r => r.tournament_id);
-
-          // Exclude completed tournaments from upcoming list
-          if (completedTournamentIds.length > 0) {
-            upcomingQuery = upcomingQuery.not('id', 'in', `(${completedTournamentIds.join(',')})`);
-          }
-
-          const resultsMap = (resultsData || []).reduce((acc, result) => {
-            acc[result.tournament_id] = true;
-            return acc;
-          }, {} as Record<string, boolean>);
-          
-          setAthleteResults(resultsMap);
-        }
-      }
-
-      // If coach, exclude tournaments they have completed commenting on
-      if (isCoach && profile) {
-        const { data: coachData } = await supabase
-          .from('coaches')
-          .select('id')
-          .eq('profile_id', profile.id)
-          .single();
-
-        if (coachData) {
-          // Get batch athlete IDs for this coach
-          const { data: batchData } = await supabase
-            .from('batches')
-            .select('id')
-            .eq('coach_id', coachData.id);
-
-          const batchIds = batchData?.map(b => b.id) || [];
-
-          const { data: batchAthleteData } = await supabase
-            .from('batch_athletes')
-            .select('athlete_id')
-            .in('batch_id', batchIds);
-
-          const athleteIds = batchAthleteData?.map(ba => ba.athlete_id) || [];
-
-          // Get tournaments where ALL participating athletes have coach comments
-          // First, get all tournaments with participating athletes from this coach's batches
-          const { data: participatingAthletes } = await supabase
-            .from('tournament_participation')
-            .select('tournament_id, athlete_id')
-            .eq('is_participating', true)
-            .in('athlete_id', athleteIds);
-
-          // Group by tournament to check completion status
-          const tournamentCompletionMap = new Map<string, { total: number; commented: number }>();
-          
-          for (const participation of participatingAthletes || []) {
-            const tournamentId = participation.tournament_id;
-            if (!tournamentCompletionMap.has(tournamentId)) {
-              tournamentCompletionMap.set(tournamentId, { total: 0, commented: 0 });
-            }
-            tournamentCompletionMap.get(tournamentId)!.total++;
-          }
-
-          // Check which tournaments have coach comments for all participating athletes
-          const { data: completedCommentsData } = await supabase
-            .from('tournament_results')
-            .select('tournament_id, athlete_id')
-            .not('coach_completed_at', 'is', null)
-            .in('athlete_id', athleteIds);
-
-          for (const comment of completedCommentsData || []) {
-            const tournamentId = comment.tournament_id;
-            if (tournamentCompletionMap.has(tournamentId)) {
-              tournamentCompletionMap.get(tournamentId)!.commented++;
-            }
-          }
-
-          // Only exclude tournaments where ALL participating athletes have coach comments
-          const fullyCompletedTournamentIds = Array.from(tournamentCompletionMap.entries())
-            .filter(([_, status]) => status.total > 0 && status.total === status.commented)
-            .map(([tournamentId, _]) => tournamentId);
-
-          // Exclude fully completed tournaments from upcoming list
-          if (fullyCompletedTournamentIds.length > 0) {
-            upcomingQuery = upcomingQuery.not('id', 'in', `(${fullyCompletedTournamentIds.join(',')})`);
-          }
-        }
-      }
-
-      const { data: upcomingData } = await upcomingQuery;
-
-      // Fetch completed tournaments with results for the current user
-      let completedData = [];
-      
-      if (isAthlete) {
-        // For athletes, get tournaments they have submitted results for
-        const { data: athleteData } = await supabase
-          .from('athletes')
-          .select('id')
-          .eq('profile_id', profile.id)
-          .single();
-
-        if (athleteData) {
-          const { data } = await supabase
-            .from('tournament_results')
-            .select(`
-              *,
-              tournament:tournaments(*)
-            `)
-            .eq('athlete_id', athleteData.id)
-            .not('athlete_completed_at', 'is', null)
-            .order('created_at', { ascending: false });
-          completedData = data || [];
-        }
-      } else if (isCoach) {
-        // For coaches, get tournaments with athlete details where they have completed commenting
-        const { data: coachData } = await supabase
-          .from('coaches')
-          .select('id')
-          .eq('profile_id', profile.id)
-          .single();
-
-        if (coachData) {
-          // Get batch athlete IDs for this coach
-          const { data: batchData } = await supabase
-            .from('batches')
-            .select('id')
-            .eq('coach_id', coachData.id);
-
-          const batchIds = batchData?.map(b => b.id) || [];
-
-          const { data: batchAthleteData } = await supabase
-            .from('batch_athletes')
-            .select('athlete_id')
-            .in('batch_id', batchIds);
-
-          const athleteIds = batchAthleteData?.map(ba => ba.athlete_id) || [];
-
-          // Get tournaments with detailed athlete and profile information
-          const { data } = await supabase
-            .from('tournament_results')
-            .select(`
-              *,
-              tournament:tournaments(*),
-              athlete:athletes(
-                id,
-                profile:profiles(
-                  id,
-                  full_name
-                )
-              )
-            `)
-            .not('coach_completed_at', 'is', null)
-            .in('athlete_id', athleteIds)
-            .order('created_at', { ascending: false });
-
-          // Group results by tournament
-          const tournamentsWithAthletes: CompletedTournamentWithAthletes[] = [];
-          const tournamentMap = new Map<string, CompletedTournamentWithAthletes>();
-
-          data?.forEach(result => {
-            const tournamentId = result.tournament.id;
-            if (!tournamentMap.has(tournamentId)) {
-              tournamentMap.set(tournamentId, {
-                tournament: result.tournament,
-                athletes: []
-              });
-            }
-            
-            const tournamentData = tournamentMap.get(tournamentId)!;
-            tournamentData.athletes.push({
-              id: result.athlete.id,
-              name: result.athlete.profile.full_name,
-              result: result
-            });
-          });
-
-          setCompletedTournamentsWithAthletes(Array.from(tournamentMap.values()));
-
-          // For backward compatibility with existing logic, keep the old format too
-          const uniqueTournaments = Array.from(
-            new Map(data?.map(item => [item.tournament.id, item]) || []).values()
-          );
-          completedData = uniqueTournaments;
-        }
-      }
+      // Fetch upcoming and completed tournaments in parallel
+      const [upcomingData, completedData] = await Promise.all([
+        fetchUpcomingTournaments(),
+        fetchCompletedTournaments()
+      ]);
 
       setUpcomingTournaments(upcomingData || []);
       setCompletedTournaments(completedData || []);
@@ -327,6 +150,156 @@ export const Tournaments = () => {
     }
   };
 
+  const fetchUpcomingTournaments = async () => {
+    let query = supabase
+      .from('tournaments')
+      .select('*');
+
+    if (isAthlete && userRoleData.athleteId) {
+      // Athletes see future tournaments, excluding those they've completed
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Get completed tournament IDs for this athlete
+      const { data: resultsData } = await supabase
+        .from('tournament_results')
+        .select('tournament_id')
+        .eq('athlete_id', userRoleData.athleteId)
+        .not('athlete_completed_at', 'is', null);
+
+      const completedTournamentIds = (resultsData || []).map(r => r.tournament_id);
+      
+      // Set athlete results for UI state
+      const resultsMap = (resultsData || []).reduce((acc, result) => {
+        acc[result.tournament_id] = true;
+        return acc;
+      }, {} as Record<string, boolean>);
+      setAthleteResults(resultsMap);
+
+      query = query
+        .gte('start_date', today)
+        .or(`created_by_athlete_id.is.null,created_by_athlete_id.eq.${userRoleData.athleteId}`);
+
+      if (completedTournamentIds.length > 0) {
+        query = query.not('id', 'in', `(${completedTournamentIds.join(',')})`);
+      }
+    } else if (isCoach && userRoleData.athleteIds) {
+      // Coaches see tournaments they haven't fully commented on
+      if (userRoleData.athleteIds.length > 0) {
+        // Get tournaments where all participating athletes have coach comments
+        const { data: participationData } = await supabase
+          .from('tournament_participation')
+          .select('tournament_id, athlete_id')
+          .eq('is_participating', true)
+          .in('athlete_id', userRoleData.athleteIds);
+
+        const { data: completedCommentsData } = await supabase
+          .from('tournament_results')
+          .select('tournament_id, athlete_id')
+          .not('coach_completed_at', 'is', null)
+          .in('athlete_id', userRoleData.athleteIds);
+
+        // Calculate which tournaments are fully completed
+        const tournamentParticipation = new Map<string, Set<string>>();
+        participationData?.forEach(p => {
+          if (!tournamentParticipation.has(p.tournament_id)) {
+            tournamentParticipation.set(p.tournament_id, new Set());
+          }
+          tournamentParticipation.get(p.tournament_id)!.add(p.athlete_id);
+        });
+
+        const tournamentComments = new Map<string, Set<string>>();
+        completedCommentsData?.forEach(c => {
+          if (!tournamentComments.has(c.tournament_id)) {
+            tournamentComments.set(c.tournament_id, new Set());
+          }
+          tournamentComments.get(c.tournament_id)!.add(c.athlete_id);
+        });
+
+        const fullyCompletedTournamentIds = Array.from(tournamentParticipation.entries())
+          .filter(([tournamentId, participants]) => {
+            const comments = tournamentComments.get(tournamentId) || new Set();
+            return participants.size > 0 && participants.size === comments.size;
+          })
+          .map(([tournamentId]) => tournamentId);
+
+        query = query.or(`created_by_athlete_id.is.null,created_by_athlete_id.in.(${userRoleData.athleteIds.join(',')})`);
+
+        if (fullyCompletedTournamentIds.length > 0) {
+          query = query.not('id', 'in', `(${fullyCompletedTournamentIds.join(',')})`);
+        }
+      } else {
+        query = query.is('created_by_athlete_id', null);
+      }
+    }
+
+    const { data } = await query.order('start_date', { ascending: true });
+    return data;
+  };
+
+  const fetchCompletedTournaments = async () => {
+    if (isAthlete && userRoleData.athleteId) {
+      const { data } = await supabase
+        .from('tournament_results')
+        .select(`
+          *,
+          tournament:tournaments(*)
+        `)
+        .eq('athlete_id', userRoleData.athleteId)
+        .not('athlete_completed_at', 'is', null)
+        .order('created_at', { ascending: false });
+
+      return data || [];
+    } else if (isCoach && userRoleData.athleteIds && userRoleData.athleteIds.length > 0) {
+      const { data } = await supabase
+        .from('tournament_results')
+        .select(`
+          *,
+          tournament:tournaments(*),
+          athlete:athletes(
+            id,
+            profile:profiles(
+              id,
+              full_name
+            )
+          )
+        `)
+        .not('coach_completed_at', 'is', null)
+        .in('athlete_id', userRoleData.athleteIds)
+        .order('created_at', { ascending: false });
+
+      // Group results by tournament for coach view
+      const tournamentsWithAthletes: CompletedTournamentWithAthletes[] = [];
+      const tournamentMap = new Map<string, CompletedTournamentWithAthletes>();
+
+      data?.forEach(result => {
+        const tournamentId = result.tournament.id;
+        if (!tournamentMap.has(tournamentId)) {
+          tournamentMap.set(tournamentId, {
+            tournament: result.tournament,
+            athletes: []
+          });
+        }
+        
+        const tournamentData = tournamentMap.get(tournamentId)!;
+        tournamentData.athletes.push({
+          id: result.athlete.id,
+          name: result.athlete.profile.full_name,
+          result: result
+        });
+      });
+
+      setCompletedTournamentsWithAthletes(Array.from(tournamentMap.values()));
+
+      // Return unique tournaments for backward compatibility
+      const uniqueTournaments = Array.from(
+        new Map(data?.map(item => [item.tournament.id, item]) || []).values()
+      );
+      return uniqueTournaments;
+    }
+
+    return [];
+  };
+
   const deleteResult = async (resultId: string) => {
     try {
       const { error } = await supabase
@@ -334,12 +307,8 @@ export const Tournaments = () => {
         .delete()
         .eq('id', resultId);
 
-      if (error) {
-        console.error('Delete error:', error);
-        throw error;
-      }
+      if (error) throw error;
       
-      // Refresh tournaments to move back to upcoming
       await fetchTournaments();
     } catch (error) {
       console.error('Error deleting result:', error);
@@ -348,33 +317,8 @@ export const Tournaments = () => {
 
   const deleteCoachComments = async (tournamentId: string) => {
     try {
-      if (!profile) return;
+      if (!userRoleData.athleteIds?.length) return;
 
-      // Get coach ID
-      const { data: coachData } = await supabase
-        .from('coaches')
-        .select('id')
-        .eq('profile_id', profile.id)
-        .single();
-
-      if (!coachData) return;
-
-      // Get batch athlete IDs for this coach
-      const { data: batchData } = await supabase
-        .from('batches')
-        .select('id')
-        .eq('coach_id', coachData.id);
-
-      const batchIds = batchData?.map(b => b.id) || [];
-
-      const { data: batchAthleteData } = await supabase
-        .from('batch_athletes')
-        .select('athlete_id')
-        .in('batch_id', batchIds);
-
-      const athleteIds = batchAthleteData?.map(ba => ba.athlete_id) || [];
-
-      // Clear coach comments and coach_completed_at for all athletes in this tournament
       const { error } = await supabase
         .from('tournament_results')
         .update({
@@ -382,14 +326,10 @@ export const Tournaments = () => {
           coach_completed_at: null
         })
         .eq('tournament_id', tournamentId)
-        .in('athlete_id', athleteIds);
+        .in('athlete_id', userRoleData.athleteIds);
 
-      if (error) {
-        console.error('Delete comments error:', error);
-        throw error;
-      }
+      if (error) throw error;
       
-      // Refresh tournaments to move back to upcoming
       await fetchTournaments();
     } catch (error) {
       console.error('Error deleting coach comments:', error);
@@ -406,6 +346,16 @@ export const Tournaments = () => {
       />
     ));
   };
+
+  // Memoize the selected athlete data to avoid recalculating on every render
+  const selectedAthleteData = useMemo(() => {
+    if (!selectedCompletedTournament || !selectedAthlete) return null;
+    
+    const tournament = completedTournamentsWithAthletes.find(t => t.tournament.id === selectedCompletedTournament);
+    const athlete = tournament?.athletes.find(a => a.id === selectedAthlete);
+    
+    return tournament && athlete ? { tournament, athlete, result: athlete.result } : null;
+  }, [selectedCompletedTournament, selectedAthlete, completedTournamentsWithAthletes]);
 
   return (
     <div className="space-y-6">
@@ -633,122 +583,114 @@ export const Tournaments = () => {
               </Card>
 
               {/* Selected Athlete Stats */}
-              {selectedCompletedTournament && selectedAthlete && (() => {
-                const tournament = completedTournamentsWithAthletes.find(t => t.tournament.id === selectedCompletedTournament);
-                const athlete = tournament?.athletes.find(a => a.id === selectedAthlete);
-                const result = athlete?.result;
-
-                if (!result || !tournament) return null;
-
-                return (
-                  <Card className="sport-card">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-2">
-                          <CardTitle className="text-lg">{tournament.tournament.name}</CardTitle>
-                          <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+              {selectedAthleteData && (
+                <Card className="sport-card">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-2">
+                        <CardTitle className="text-lg">{selectedAthleteData.tournament.tournament.name}</CardTitle>
+                        <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                          <span className="flex items-center">
+                            <Calendar className="h-4 w-4 mr-1" />
+                            {new Date(selectedAthleteData.tournament.tournament.start_date).toLocaleDateString()}
+                          </span>
+                          {selectedAthleteData.tournament.tournament.location && (
                             <span className="flex items-center">
-                              <Calendar className="h-4 w-4 mr-1" />
-                              {new Date(tournament.tournament.start_date).toLocaleDateString()}
+                              <MapPin className="h-4 w-4 mr-1" />
+                              {selectedAthleteData.tournament.tournament.location}
                             </span>
-                            {tournament.tournament.location && (
-                              <span className="flex items-center">
-                                <MapPin className="h-4 w-4 mr-1" />
-                                {tournament.tournament.location}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <User className="h-4 w-4" />
-                            <span className="font-medium">{athlete.name}</span>
-                          </div>
-                        </div>
-                        <Badge className="bg-yellow-500/20 text-yellow-400">
-                          <Trophy className="h-3 w-3 mr-1" />
-                          {result.result}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {/* Tournament Stats */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {result.position && (
-                            <div className="stat-card">
-                              <p className="text-sm text-muted-foreground mb-2">Position</p>
-                              <p className="text-sm font-semibold">{result.position}</p>
-                            </div>
-                          )}
-                          
-                          {result.rank && (
-                            <div className="stat-card">
-                              <p className="text-sm text-muted-foreground mb-2">Rank</p>
-                              <p className="text-sm font-semibold">#{result.rank}</p>
-                            </div>
-                          )}
-                          
-                          {result.points_scored && (
-                            <div className="stat-card">
-                              <p className="text-sm text-muted-foreground mb-2">Points Scored</p>
-                              <p className="text-sm font-semibold">{result.points_scored}</p>
-                            </div>
                           )}
                         </div>
-
-                        {result.strong_points && (
-                          <div className="stat-card">
-                            <p className="text-sm text-green-400 mb-2 font-semibold">Strong Points</p>
-                            <p className="text-sm">{result.strong_points}</p>
-                          </div>
-                        )}
-                        
-                        {result.areas_of_improvement && (
-                          <div className="stat-card">
-                            <p className="text-sm text-orange-400 mb-2 font-semibold">Areas of Improvement</p>
-                            <p className="text-sm">{result.areas_of_improvement}</p>
-                          </div>
-                        )}
-                        
-                        {result.coach_comments && (
-                          <div className="stat-card">
-                            <p className="text-sm text-blue-400 mb-2 font-semibold">Coach Comments</p>
-                            <p className="text-sm">{result.coach_comments}</p>
-                          </div>
-                        )}
-
-                        {result.notes && (
-                          <div className="stat-card">
-                            <p className="text-sm text-muted-foreground mb-2 font-semibold">Notes</p>
-                            <p className="text-sm">{result.notes}</p>
-                          </div>
-                        )}
-                        
-                        {/* Action Buttons */}
-                        <div className="pt-4 border-t flex space-x-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => setShowCommentsModal({ id: tournament.tournament.id, name: tournament.tournament.name })}
-                          >
-                            <Star className="h-4 w-4 mr-2" />
-                            Edit Comments
-                          </Button>
-                          <Button 
-                            variant="destructive" 
-                            size="sm"
-                            onClick={() => deleteCoachComments(tournament.tournament.id)}
-                          >
-                            Delete Comments
-                          </Button>
+                        <div className="flex items-center space-x-2">
+                          <User className="h-4 w-4" />
+                          <span className="font-medium">{selectedAthleteData.athlete.name}</span>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                );
-              })()}
+                      <Badge className="bg-yellow-500/20 text-yellow-400">
+                        <Trophy className="h-3 w-3 mr-1" />
+                        {selectedAthleteData.result.result}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {/* Tournament Stats */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {selectedAthleteData.result.position && (
+                          <div className="stat-card">
+                            <p className="text-sm text-muted-foreground mb-2">Position</p>
+                            <p className="text-sm font-semibold">{selectedAthleteData.result.position}</p>
+                          </div>
+                        )}
+                        
+                        {selectedAthleteData.result.rank && (
+                          <div className="stat-card">
+                            <p className="text-sm text-muted-foreground mb-2">Rank</p>
+                            <p className="text-sm font-semibold">#{selectedAthleteData.result.rank}</p>
+                          </div>
+                        )}
+                        
+                        {selectedAthleteData.result.points_scored && (
+                          <div className="stat-card">
+                            <p className="text-sm text-muted-foreground mb-2">Points Scored</p>
+                            <p className="text-sm font-semibold">{selectedAthleteData.result.points_scored}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {selectedAthleteData.result.strong_points && (
+                        <div className="stat-card">
+                          <p className="text-sm text-green-400 mb-2 font-semibold">Strong Points</p>
+                          <p className="text-sm">{selectedAthleteData.result.strong_points}</p>
+                        </div>
+                      )}
+                      
+                      {selectedAthleteData.result.areas_of_improvement && (
+                        <div className="stat-card">
+                          <p className="text-sm text-orange-400 mb-2 font-semibold">Areas of Improvement</p>
+                          <p className="text-sm">{selectedAthleteData.result.areas_of_improvement}</p>
+                        </div>
+                      )}
+                      
+                      {selectedAthleteData.result.coach_comments && (
+                        <div className="stat-card">
+                          <p className="text-sm text-blue-400 mb-2 font-semibold">Coach Comments</p>
+                          <p className="text-sm">{selectedAthleteData.result.coach_comments}</p>
+                        </div>
+                      )}
+
+                      {selectedAthleteData.result.notes && (
+                        <div className="stat-card">
+                          <p className="text-sm text-muted-foreground mb-2 font-semibold">Notes</p>
+                          <p className="text-sm">{selectedAthleteData.result.notes}</p>
+                        </div>
+                      )}
+                      
+                      {/* Action Buttons */}
+                      <div className="pt-4 border-t flex space-x-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setShowCommentsModal({ id: selectedAthleteData.tournament.tournament.id, name: selectedAthleteData.tournament.tournament.name })}
+                        >
+                          <Star className="h-4 w-4 mr-2" />
+                          Edit Comments
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={() => deleteCoachComments(selectedAthleteData.tournament.tournament.id)}
+                        >
+                          Delete Comments
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           ) : (
-            /* Athletes view - unchanged */
+            /* Athletes view */
             completedTournaments.map((result) => (
               <Card key={result.id} className="sport-card">
                 <CardHeader className="pb-3">
@@ -849,21 +791,20 @@ export const Tournaments = () => {
             <Trophy className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">No completed tournaments</h3>
             <p className="text-muted-foreground">
-              Your tournament results will appear here after you compete
+              Once you submit tournament results, they will appear here
             </p>
           </CardContent>
         </Card>
       )}
 
-      {/* Add Tournament Form */}
+      {/* Modals */}
       {showAddForm && (
-        <AddTournamentForm
+        <AddTournamentForm 
           onClose={() => setShowAddForm(false)}
           onTournamentAdded={fetchTournaments}
         />
       )}
 
-      {/* Tournament Athletes Modal */}
       {selectedTournament && (
         <TournamentAthletesModal
           tournamentId={selectedTournament.id}
@@ -872,7 +813,6 @@ export const Tournaments = () => {
         />
       )}
 
-      {/* Tournament Results Form */}
       {showResultsForm && (
         <TournamentResultsForm
           tournamentId={showResultsForm.id}
@@ -882,7 +822,6 @@ export const Tournaments = () => {
         />
       )}
 
-      {/* Tournament Comments Modal */}
       {showCommentsModal && (
         <TournamentCommentsModal
           tournamentId={showCommentsModal.id}
