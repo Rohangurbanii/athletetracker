@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -67,6 +67,13 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "athletes_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "safe_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -245,6 +252,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "clubs_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "safe_profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       coach_athletes: {
@@ -327,6 +341,13 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coaches_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "safe_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -964,15 +985,61 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      safe_profiles: {
+        Row: {
+          avatar_url: string | null
+          club_id: string | null
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string | null
+          phone: string | null
+          role: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          avatar_url?: never
+          club_id?: string | null
+          created_at?: string | null
+          email?: never
+          full_name?: string | null
+          id?: string | null
+          phone?: never
+          role?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          avatar_url?: never
+          club_id?: string | null
+          created_at?: string | null
+          email?: never
+          full_name?: string | null
+          id?: string | null
+          phone?: never
+          role?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       check_auth_rate_limit: {
         Args: {
-          user_identifier: string
           action_type: string
           max_attempts?: number
           time_window?: unknown
+          user_identifier: string
         }
         Returns: boolean
       }
@@ -999,18 +1066,18 @@ export type Database = {
       get_security_dashboard: {
         Args: Record<PropertyKey, never>
         Returns: {
-          metric: string
           count: number
+          metric: string
           time_period: string
         }[]
       }
       log_security_event: {
         Args: {
           p_action: string
-          p_table_name?: string
-          p_record_id?: string
-          p_old_values?: Json
           p_new_values?: Json
+          p_old_values?: Json
+          p_record_id?: string
+          p_table_name?: string
         }
         Returns: undefined
       }
@@ -1019,7 +1086,7 @@ export type Database = {
         Returns: string
       }
       update_user_role: {
-        Args: { target_user_id: string; new_role: string }
+        Args: { new_role: string; target_user_id: string }
         Returns: undefined
       }
       validate_content_text: {
