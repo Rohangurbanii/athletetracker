@@ -2,8 +2,12 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>sport-success-sync</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#0ea5e9" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Athlete Performance Tracker" />
+    <title>Athlete Performance Tracker</title>
     <meta name="description" content="Lovable Generated Project" />
     <meta name="author" content="Lovable" />
 
@@ -17,6 +21,37 @@
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
     <link rel="preconnect" href="https://micnbqtrzfxavalhqbhp.supabase.co" crossorigin />
     <link rel="dns-prefetch" href="https://micnbqtrzfxavalhqbhp.supabase.co" />
+    <style>
+      /* Prevent zoom on iOS when focusing inputs */
+      @media screen and (max-width: 767px) {
+        input[type="text"], 
+        input[type="email"], 
+        input[type="password"], 
+        input[type="number"],
+        textarea,
+        select {
+          font-size: 16px !important;
+        }
+      }
+      
+      /* Safe area insets for iOS devices */
+      body {
+        padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      }
+      
+      /* Prevent horizontal scrolling */
+      html, body {
+        overflow-x: hidden;
+        width: 100%;
+        max-width: 100vw;
+      }
+      
+      /* Smooth scrolling for better mobile experience */
+      html {
+        scroll-behavior: smooth;
+        -webkit-text-size-adjust: 100%;
+      }
+    </style>
   </head>
 
   <body>

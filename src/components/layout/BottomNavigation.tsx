@@ -24,7 +24,7 @@ export const BottomNavigation = () => {
 
   return (
     <div className="mobile-bottom-nav">
-      <nav className="flex items-center justify-around py-2 px-4">
+      <nav className="flex items-center justify-around py-2 px-2 safe-area-padding">
         {navigationItems.map((item) => {
           const isActive = location.pathname === item.href;
           const Icon = item.icon;
@@ -36,14 +36,14 @@ export const BottomNavigation = () => {
               onMouseEnter={() => prefetch(item.href)}
               onTouchStart={() => prefetch(item.href)}
               className={cn(
-                'flex flex-col items-center space-y-1 py-2 px-3 rounded-lg transition-all duration-200',
+                'flex flex-col items-center justify-center space-y-1 py-2 px-2 rounded-lg transition-all duration-200 min-h-[44px] min-w-[44px]',
                 isActive 
-                  ? 'bg-primary/20 text-primary' 
+                  ? 'bg-primary/20 text-primary scale-105' 
                   : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
               )}
             >
-              <Icon className={cn('h-5 w-5', isActive && 'scale-110')} />
-              <span className="text-xs font-medium">{item.label}</span>
+              <Icon className={cn('h-4 w-4 sm:h-5 sm:w-5', isActive && 'scale-110')} />
+              <span className="text-xs font-medium leading-tight">{item.label}</span>
             </Link>
           );
         })}

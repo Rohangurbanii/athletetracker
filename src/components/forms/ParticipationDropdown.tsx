@@ -97,7 +97,7 @@ export const ParticipationDropdown = ({ tournamentId }: ParticipationDropdownPro
 
   if (participation === true) {
     return (
-      <Button className="bg-green-600 hover:bg-green-700 text-white">
+      <Button className="bg-green-600 hover:bg-green-700 text-white touch-target">
         <Check className="h-4 w-4 mr-2" />
         Participating
       </Button>
@@ -106,7 +106,7 @@ export const ParticipationDropdown = ({ tournamentId }: ParticipationDropdownPro
 
   if (participation === false) {
     return (
-      <Button className="bg-red-600 hover:bg-red-700 text-white">
+      <Button className="bg-red-600 hover:bg-red-700 text-white touch-target">
         <X className="h-4 w-4 mr-2" />
         Not Participating
       </Button>
@@ -116,17 +116,23 @@ export const ParticipationDropdown = ({ tournamentId }: ParticipationDropdownPro
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" disabled={loading}>
+        <Button variant="outline" disabled={loading} className="touch-target">
           Participation
           <ChevronDown className="h-4 w-4 ml-2" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent>
-        <DropdownMenuItem onClick={() => updateParticipation(true)}>
+      <DropdownMenuContent className="w-48">
+        <DropdownMenuItem 
+          onClick={() => updateParticipation(true)}
+          className="touch-target"
+        >
           <Check className="h-4 w-4 mr-2 text-green-600" />
           Yes, I'm participating
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => updateParticipation(false)}>
+        <DropdownMenuItem 
+          onClick={() => updateParticipation(false)}
+          className="touch-target"
+        >
           <X className="h-4 w-4 mr-2 text-red-600" />
           No, I'm not participating
         </DropdownMenuItem>
