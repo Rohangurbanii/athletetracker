@@ -42,57 +42,98 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   
 
   useEffect(() => {
-    // Get initial session
-    console.log("getting initial session");
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        console.log("session present, now fetching profile");
-        fetchProfile(session.user.id);
-      } else {
-        console.log("session is absent");
-        setLoading(false);
-      }
-    });
+    let mounted = true;
+    
+    const initAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (!mounted) return;
+        
+        if (error) {
+          console.error('Session error:', error);
+          setLoading(false);
+          return;
+        }
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
         setUser(session?.user ?? null);
         if (session?.user) {
           await fetchProfile(session.user.id);
         } else {
-          setProfile(null);
           setLoading(false);
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    initAuth();
+
+    // Listen for auth changes with error handling
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!mounted) return;
+        
+        try {
+          setUser(session?.user ?? null);
+          if (session?.user) {
+            await fetchProfile(session.user.id);
+          } else {
+            setProfile(null);
+            setLoading(false);
+          }
+        } catch (error) {
+          console.error('Auth state change error:', error);
+          if (mounted) {
+            setLoading(false);
+          }
         }
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const fetchProfile = async (userId: string) => {
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+
     try {
-      console.log('Fetching profile for user:', userId);
+      const timeoutId = setTimeout(() => {
+        console.error('Profile fetch timeout');
+        setProfile(null);
+        setLoading(false);
+      }, 10000); // 10s timeout
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
         .single();
 
+      clearTimeout(timeoutId);
+
       if (error) {
-        console.error('Error fetching profile:', error);
         if (error.code === 'PGRST116') {
-          // No profile found - this should only happen for old accounts
           console.log('No profile found for user, this may be an incomplete signup');
+          setProfile(null);
+        } else {
+          console.error('Error fetching profile:', error);
+          setProfile(null);
         }
-        throw error;
+      } else {
+        setProfile(data as Profile);
       }
-      console.log('Profile fetched successfully:', data);
-      setProfile(data as Profile);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching profile:', error);
-      // If no profile found, user might need to complete signup
       setProfile(null);
     } finally {
       setLoading(false);

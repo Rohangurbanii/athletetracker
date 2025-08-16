@@ -37,10 +37,16 @@ const LoadingSpinner = () => (
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60, // cache for 1 min
-      gcTime: 1000 * 60 * 5, // garbage collect after 5 mins
+      staleTime: 1000 * 60 * 2, // cache for 2 mins
+      gcTime: 1000 * 60 * 10, // garbage collect after 10 mins
       refetchOnWindowFocus: false,
-      retry: 2,
+      retry: 1, // Reduce retries to prevent hanging
+      retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 3000),
+      networkMode: 'online',
+    },
+    mutations: {
+      retry: 1,
+      networkMode: 'online',
     },
   },
 });
