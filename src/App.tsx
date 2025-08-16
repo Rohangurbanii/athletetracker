@@ -37,11 +37,17 @@ const LoadingSpinner = () => (
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 2, // cache for 2 mins
-      gcTime: 1000 * 60 * 10, // garbage collect after 10 mins
+      staleTime: 1000 * 30, // Reduced to 30s to prevent stale data issues on reload
+      gcTime: 1000 * 60 * 5, // Reduced to 5 mins
       refetchOnWindowFocus: false,
-      retry: 1, // Reduce retries to prevent hanging
-      retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 3000),
+      refetchOnReconnect: true,
+      retry: (failureCount, error) => {
+        // Don't retry on network errors during page reload
+        if (failureCount >= 2) return false;
+        if (error?.message?.includes('abort')) return false;
+        return true;
+      },
+      retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 2000),
       networkMode: 'online',
     },
     mutations: {

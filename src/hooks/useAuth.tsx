@@ -3,6 +3,7 @@ import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { sanitizeInput, isValidEmail, isStrongPassword, checkRateLimit, clearSensitiveData } from '@/utils/security';
+import { detectStaleCache, clearAuthCache } from '@/utils/cacheUtils';
 
 interface Profile {
   id: string;
@@ -43,10 +44,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     let mounted = true;
+    let initController: AbortController | null = null;
     
     const initAuth = async () => {
       try {
+        // Clear any stale auth data on fresh page load
+        if (detectStaleCache()) {
+          clearAuthCache();
+          await supabase.auth.refreshSession();
+        }
+
+        initController = new AbortController();
+        const timeoutId = setTimeout(() => {
+          initController?.abort();
+        }, 8000); // 8s timeout for session
+
         const { data: { session }, error } = await supabase.auth.getSession();
+        clearTimeout(timeoutId);
         
         if (!mounted) return;
         
@@ -96,6 +110,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     return () => {
       mounted = false;
+      initController?.abort();
       subscription.unsubscribe();
     };
   }, []);
@@ -107,16 +122,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     try {
+      // Create AbortController for proper request cancellation
+      const controller = new AbortController();
       const timeoutId = setTimeout(() => {
         console.error('Profile fetch timeout');
-        setProfile(null);
-        setLoading(false);
-      }, 10000); // 10s timeout
+        controller.abort();
+      }, 5000); // Reduced timeout to 5s
       
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
+        .abortSignal(controller.signal)
         .single();
 
       clearTimeout(timeoutId);
@@ -124,6 +141,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (error) {
         if (error.code === 'PGRST116') {
           console.log('No profile found for user, this may be an incomplete signup');
+          setProfile(null);
+        } else if (error.name === 'AbortError') {
+          console.warn('Profile fetch was aborted due to timeout');
           setProfile(null);
         } else {
           console.error('Error fetching profile:', error);
@@ -133,7 +153,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setProfile(data as Profile);
       }
     } catch (error: any) {
-      console.error('Error fetching profile:', error);
+      if (error.name !== 'AbortError') {
+        console.error('Error fetching profile:', error);
+      }
       setProfile(null);
     } finally {
       setLoading(false);
