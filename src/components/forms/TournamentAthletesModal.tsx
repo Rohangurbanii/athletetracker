@@ -133,7 +133,9 @@ export const TournamentAthletesModal = ({ tournamentId, tournamentName, onClose 
                         </div>
                         <div className="flex-1 min-w-0">
                           <h4 className="font-medium text-sm sm:text-base truncate">{athlete.profiles.full_name}</h4>
-                          <p className="text-xs sm:text-sm text-muted-foreground truncate">{athlete.profiles.email}</p>
+                          <p className="text-xs sm:text-sm text-muted-foreground truncate">
+                            {athlete.profiles.email || 'Contact details protected'}
+                          </p>
                         </div>
                         <Badge className="bg-green-500/20 text-green-400 text-xs flex-shrink-0">
                           Participating

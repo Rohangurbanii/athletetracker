@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -967,12 +967,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_see_profile_details: {
+        Args: { target_user_id: string }
+        Returns: boolean
+      }
       check_auth_rate_limit: {
         Args: {
-          user_identifier: string
           action_type: string
           max_attempts?: number
           time_window?: unknown
+          user_identifier: string
         }
         Returns: boolean
       }
@@ -996,21 +1000,28 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_current_user_role_and_club: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          user_club_id: string
+          user_role: string
+        }[]
+      }
       get_security_dashboard: {
         Args: Record<PropertyKey, never>
         Returns: {
-          metric: string
           count: number
+          metric: string
           time_period: string
         }[]
       }
       log_security_event: {
         Args: {
           p_action: string
-          p_table_name?: string
-          p_record_id?: string
-          p_old_values?: Json
           p_new_values?: Json
+          p_old_values?: Json
+          p_record_id?: string
+          p_table_name?: string
         }
         Returns: undefined
       }
@@ -1019,7 +1030,7 @@ export type Database = {
         Returns: string
       }
       update_user_role: {
-        Args: { target_user_id: string; new_role: string }
+        Args: { new_role: string; target_user_id: string }
         Returns: undefined
       }
       validate_content_text: {
