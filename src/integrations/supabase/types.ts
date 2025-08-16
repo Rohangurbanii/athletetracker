@@ -69,13 +69,6 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "athletes_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "safe_profiles"
-            referencedColumns: ["id"]
-          },
         ]
       }
       attendance: {
@@ -252,13 +245,6 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "clubs_admin_id_fkey"
-            columns: ["admin_id"]
-            isOneToOne: false
-            referencedRelation: "safe_profiles"
-            referencedColumns: ["id"]
-          },
         ]
       }
       coach_athletes: {
@@ -341,13 +327,6 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "coaches_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "safe_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -985,55 +964,13 @@ export type Database = {
       }
     }
     Views: {
-      safe_profiles: {
-        Row: {
-          avatar_url: string | null
-          club_id: string | null
-          created_at: string | null
-          email: string | null
-          full_name: string | null
-          id: string | null
-          phone: string | null
-          role: string | null
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          avatar_url?: never
-          club_id?: string | null
-          created_at?: string | null
-          email?: never
-          full_name?: string | null
-          id?: string | null
-          phone?: never
-          role?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          avatar_url?: never
-          club_id?: string | null
-          created_at?: string | null
-          email?: never
-          full_name?: string | null
-          id?: string | null
-          phone?: never
-          role?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_club_id_fkey"
-            columns: ["club_id"]
-            isOneToOne: false
-            referencedRelation: "clubs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
+      can_see_profile_details: {
+        Args: { target_user_id: string }
+        Returns: boolean
+      }
       check_auth_rate_limit: {
         Args: {
           action_type: string
@@ -1062,6 +999,13 @@ export type Database = {
       get_current_user_club_id: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_current_user_role_and_club: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          user_club_id: string
+          user_role: string
+        }[]
       }
       get_security_dashboard: {
         Args: Record<PropertyKey, never>
